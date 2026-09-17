@@ -1,5 +1,7 @@
-// Headless check of the SSDBridge C ABI used by the Monitor tab. Run: make -C Tools check
+// Headless check of the SSDBridge C ABI used by the Monitor tab and of its SSD reader.
+// Run: make -C Tools check
 #include "../VisualizerApp/Sources/SSDBridge/include/ssd_bridge.h"
+#include "../VisualizerApp/Sources/SSDBridge/ssd_reader.h"
 #include <cassert>
 #include <cmath>
 #include <cstdio>
@@ -23,7 +25,59 @@ static const SSDBSpeakerInfo &byName(int n, const char *name) {
 }
 static bool near(double a, double b) { return std::fabs(a - b) < 1e-6; }
 
+static const std::string kHead = "[SCENE]\nVersion\t0.1\nUnit\tmeter\nCoordinateSystem\tSSD_RH_ZUP\nAngleUnit\tdegree\n";
+
+// Where the object's world rotation sends a local axis (0 = X, 1 = Y, 2 = Z).
+static bool maps(const ssdreader::Object &o, int axis, double x, double y, double z) {
+    return near(o.world.r[0][axis], x) && near(o.world.r[1][axis], y) && near(o.world.r[2][axis], z);
+}
+
+// parse() must fail and name the offending line.
+static void expectError(const std::string &text, const char *line) {
+    try {
+        ssdreader::parse(text);
+    } catch (const ssdreader::Error &e) {
+        if (std::strstr(e.what(), line)) return;
+        std::printf("wrong error: %s (expected %s)\n", e.what(), line);
+        assert(false);
+    }
+    std::printf("no error for:\n%s\n", text.c_str());
+    assert(false);
+}
+
+static void readerChecks() {
+    // Rotation convention: Yaw about +Z, Pitch about +X, right-handed, degrees.
+    auto scene = ssdreader::parse(kHead + "[OBJECT]\n"
+                                          "yaw\tspeaker\ty\tnone\t0\t0\t0\t90\t0\t0\t1\n"
+                                          "pitch\tspeaker\tp\tnone\t0\t0\t0\t0\t90\t0\t1\n"
+                                          "all\tspeaker\ta\tnone\t0\t0\t0\t90\t90\t90\t1\n");
+    assert(maps(scene.objects.at("yaw"), 0, 0, 1, 0));    // Yaw 90: local +X -> world +Y
+    assert(maps(scene.objects.at("pitch"), 2, 0, -1, 0)); // Pitch 90: local +Z -> world -Y
+    // Order R = Ry(Roll) * Rx(Pitch) * Rz(Yaw): +X -> +Y -> +Z -> +X and +Y -> -X -> -X -> +Z.
+    assert(maps(scene.objects.at("all"), 0, 1, 0, 0) && maps(scene.objects.at("all"), 1, 0, 0, 1));
+
+    // Parent/child: M_world = M_parent * T * R, independent of row order.
+    scene = ssdreader::parse(kHead + "[OBJECT]\n"
+                                     "child\tspeaker\tc\trig\t1\t0\t0\t0\t90\t0\t1\n"
+                                     "rig\ttruss\tr\tnone\t1\t2\t3\t90\t0\t0\t0\n");
+    const auto &child = scene.objects.at("child");
+    assert(near(child.world.t[0], 1) && near(child.world.t[1], 3) && near(child.world.t[2], 3));
+    assert(maps(child, 2, 1, 0, 0)); // own Pitch 90 sends +Z to -Y, the rig's Yaw 90 turns -Y into +X
+    assert(child.enabled && !child.active); // rig is disabled
+
+    const std::string speaker = "1\tspeaker\ta\tnone\t0\t0\t0\t0\t0\t0\t1\n";
+    expectError(kHead + "[OBJECT]\n" + speaker + "2\tspeaker\tb\t99\t0\t0\t0\t0\t0\t0\t1\n", "line 8:"); // no parent 99
+    expectError(kHead + "[OBJECT]\n3\ttruss\ta\t4\t0\t0\t0\t0\t0\t0\t1\n4\ttruss\tb\t3\t0\t0\t0\t0\t0\t0\t1\n",
+                "line 7:"); // parent cycle
+    expectError(kHead + "[OBJECT]\n1\tspeaker\ta\tnone\t+1.0\t0\t0\t0\t0\t0\t1\n", "line 7:"); // leading '+'
+    expectError(kHead + "[OBJECT]\n1\ttruss\ta\tnone\t0\t0\t0\t0\t0\t0\t1\n[SPEAKER]\n1\t1\t0\t0\t0\n",
+                "line 9:"); // SPEAKER on a non-speaker OBJECT
+    expectError("[SCENE]\nVersion\t0.2\n", "line 2:");
+}
+
 int main() {
+    readerChecks();
+
     int n = load("../Examples/dome-24.sscene");
     assert(n == 24);
     assert(std::strcmp(info.name, "dome-24") == 0);
