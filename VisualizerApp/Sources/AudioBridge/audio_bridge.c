@@ -40,6 +40,17 @@ uint32_t abrReadLevels(float *outLevels, uint32_t maxOut) {
     return n;
 }
 
+uint32_t abrReadMeters(float *outPeak, float *outRms, uint32_t *outClip, uint32_t maxOut) {
+    if (!gShm && !abrOpen()) return 0;
+    uint32_t n = gShm->channelCount;
+    if (n > maxOut) n = maxOut;
+    if (n > VAI_MAX_CHANNELS) n = VAI_MAX_CHANNELS;
+    if (outPeak) memcpy(outPeak, gShm->peakLevel, sizeof(float) * n);
+    if (outRms) memcpy(outRms, gShm->rmsLevel, sizeof(float) * n);
+    if (outClip) memcpy(outClip, gShm->clipCount, sizeof(uint32_t) * n);
+    return n;
+}
+
 bool abrReadStatus(VAIStatus *outStatus) {
     if (!outStatus) return false;
     if (!gShm && !abrOpen()) return false;

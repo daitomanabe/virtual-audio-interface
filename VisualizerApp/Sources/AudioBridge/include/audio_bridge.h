@@ -21,6 +21,12 @@ void abrClose(void);
 // Returns the number of channels copied, or 0 if the segment isn't open/available.
 uint32_t abrReadLevels(float *outLevels, uint32_t maxOut);
 
+// Copies up to maxOut channels of ballistics peak, RMS, and cumulative clip
+// count (VAIMeterShm v3) into outPeak/outRms/outClip. Any of the three may be
+// NULL to skip it. Returns the number of channels copied, or 0 if the
+// segment isn't open/available.
+uint32_t abrReadMeters(float *outPeak, float *outRms, uint32_t *outClip, uint32_t maxOut);
+
 // Status snapshot of driver-decided values (see VAIMeterShm). All zero if
 // the segment isn't open yet.
 typedef struct {
