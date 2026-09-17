@@ -60,12 +60,22 @@ struct SettingsView: View {
                     LabeledContent("設定適用状況", value: s.configAppliedCounter == s.configCounter ? "適用済み" : "適用待ち…")
                 }
             }
+
+            Text(Self.versionString)
+                .font(.caption2).foregroundStyle(.secondary)
         }
         .formStyle(.grouped)
         .onAppear {
             requestedChannelCount = model.status.available ? Int(model.status.channelCount) : 128
             requestedSampleRate = model.status.available && model.status.sampleRate > 0 ? model.status.sampleRate : 48000
         }
+    }
+
+    private static var versionString: String {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "Version \(short) (\(build))"
     }
 
     private func bufferSizeLabel(_ s: DriverStatus) -> String {
