@@ -90,19 +90,34 @@ virtual-audio-interface/
 
 ### 完了 (このセッション)
 - [x] プロジェクト構成・アーキテクチャ設計
-- [x] HAL Plugin 最小実装 (16ch, IOProcでの受信・共有メモリへの publish、
-      clang++でビルド確認)
-- [x] SwiftUI アプリ雛形 (128ch レベルメーターグリッド、共有メモリ読み出し)
+- [x] HAL Plugin 128ch実装 (Output ストリーム、`WriteMix` からのpeak計算、
+      共有メモリへの publish、clang++でビルド確認)
+- [x] SwiftUI アプリ雛形 (128ch レベルメーターグリッド、共有メモリ読み出し、
+      peak-hold/decay ballistics)
 - [x] SSDBridge (Scene.hラップ、SPEAKER Channel→World座標、SceneKit軸変換)
 - [x] SceneKitでのスピーカー3D表示 + レベルに応じた発光・拡大
+      (.sscene 再ロード時のシーン再構築込み)
 - [x] `swift build` / `make` (HALPlugin) の両方でビルド確認済み
 
+### Output ストリーム化 (このセッション)
+DAW (Ableton Live 等) は仮想デバイスに対して**出力**するため、ストリーム方向を
+Output (`kAudioStreamPropertyDirection` = 0) に変更した。`Plugin_DoIOOperation`
+は `kAudioServerPlugInIOOperationWriteMix` を処理し、HALが混合(ダウンミック
+ス済み)した `ioMainBuffer` から直接チャンネル別 abs peak を計算する
+(旧 `ReadInput` 経路・中間コピー用リングバッファは削除)。`Plugin_GetZeroTimeStamp`
+も `mach_absolute_time` + `mach_timebase_info` でHALクロックを正しく進めるように
+実装した。
+
+### 可変サンプルレート対応 (このセッション)
+`kAudioDevicePropertyNominalSampleRate` を 44100/48000/88200/96000 Hz で
+setting 可能にした。設定要求は `RequestDeviceConfigurationChange` →
+`Plugin_PerformDeviceConfigurationChange` を経由し、実際のレート切り替え
+(`gSampleRate` 更新・ゼロタイムスタンプの周期再計算)はそこで行う
+(`gStateMutex` で保護)。`kAudioStreamPropertyVirtualFormat` /
+`AvailableNominalSampleRates` もこの4レートを反映する。
+
 ### 未実装・残課題
-- [ ] **128ch化**: `HALPlugin/src/VirtualAudioDevicePlugin.cpp` の
-      `kChannelCount` を 16→128 に上げ、`AudioStreamBasicDescription` と
-      リングバッファサイズを合わせて再検証する
-      (バッファサイズが大きくなるためIOProc内メモリコピー量も要確認)。
-- [ ] **実機インストール手順の整備**: `.driver` バンドルを
+- [ ] **実機インストール手順の整備 (未検証)**: `.driver` バンドルを
       `/Library/Audio/Plug-Ins/HAL/` に配置し、コード署名 or SIP無効化、
       `sudo killall coreaudiod` で再読込する手順のドキュメント化と検証。
       本セッションではコンパイル確認までで、実機インストールは未検証。
