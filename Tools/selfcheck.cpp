@@ -21,6 +21,18 @@ int main(int argc, char **argv) {
     uint32_t got = abrReadLevels(lv, VAI_MAX_CHANNELS);
     std::printf("speakers=%d shm_channels=%u ch1=%.2f ch128=%.2f\n", n, got, lv[0], lv[127]);
     if (got) assert(got == 128);
+
+    VAIStatus status = {};
+    if (abrReadStatus(&status)) {
+        std::printf("status: sr=%.0f iobuf=%u running=%u clients=%u\n",
+                     status.sampleRate, status.ioBufferFrameSize, status.isRunning, status.clientCount);
+        uint64_t beforeConfig = status.configCounter;
+        bool wrote = abrWriteConfig(64, 48000.0);
+        assert(wrote);
+        VAIStatus after = {};
+        abrReadStatus(&after);
+        assert(after.configCounter == beforeConfig + 1);
+    }
     std::puts("OK");
     return 0;
 }
