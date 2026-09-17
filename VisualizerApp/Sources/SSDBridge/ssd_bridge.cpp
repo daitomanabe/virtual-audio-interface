@@ -1,12 +1,15 @@
 #include "include/ssd_bridge.h"
 #include "ssd_reader.h"
+#include <algorithm>
 #include <cstring>
 
 namespace {
 void copyText(char *dst, size_t capacity, const std::string &src) {
     if (!dst || capacity == 0) return;
-    std::strncpy(dst, src.c_str(), capacity - 1);
-    dst[capacity - 1] = '\0';
+    size_t n = std::min(src.size(), capacity - 1);
+    while (n > 0 && n < src.size() && (static_cast<unsigned char>(src[n]) & 0xC0) == 0x80) --n; // don't split a UTF-8 sequence
+    std::memcpy(dst, src.data(), n);
+    dst[n] = '\0';
 }
 } // namespace
 
