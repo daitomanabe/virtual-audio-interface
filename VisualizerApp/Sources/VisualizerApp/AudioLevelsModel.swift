@@ -51,6 +51,10 @@ final class AudioLevelsModel: ObservableObject {
     private var clipBaseline: [UInt32] = Array(repeating: 0, count: channelCount)
     private var lastClipCounts: [UInt32] = Array(repeating: 0, count: channelCount)
     private var clipBaselineSet = false
+    private var lastUpdateCounter: UInt64 = 0
+    private var lastUpdateTime = Date.distantPast
+    /// shm keeps its last values when IO stops or the driver is removed; treat a stalled counter as silence.
+    private static let staleAfter: TimeInterval = 0.25
 
     init() {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
@@ -78,6 +82,14 @@ final class AudioLevelsModel: ObservableObject {
                     abrReadMeters(peakPtr.baseAddress, rmsPtr.baseAddress, clipPtr.baseAddress, UInt32(Self.channelCount))
                 }
             }
+        }
+        var counter = VAIStatus()
+        if abrReadStatus(&counter), counter.updateCounter != lastUpdateCounter {
+            lastUpdateCounter = counter.updateCounter
+            lastUpdateTime = Date()
+        }
+        if Date().timeIntervalSince(lastUpdateTime) > Self.staleAfter {
+            for i in 0..<Int(n) { peakBuf[i] = 0; rmsBuf[i] = 0 }
         }
         if n > 0 {
             if !clipBaselineSet {
