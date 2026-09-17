@@ -1,74 +1,121 @@
 import SwiftUI
 import UniformTypeIdentifiers
-import SceneKit
+
+enum MainTab: Hashable { case monitor, meters, settings }
 
 struct ContentView: View {
-    @StateObject private var audioLevels = AudioLevelsModel()
+    /// Not observed here: only the views that show levels subscribe, so the
+    /// whole window does not re-render at 30 Hz.
+    let audioLevels: AudioLevelsModel
+    let scenePath: String?           // CLI argument; nil -> last opened file
+    let docshot: Bool
+
     @StateObject private var sceneModel = SSDSceneModel()
-    @State private var tab = 0
+    @State private var tab: MainTab
+    @State private var camera: CameraPreset
+    @State private var labelMode: LabelMode
+    @State private var showLines: Bool
+    @State private var selectedChannel: Int?
+
+    private static let lastPathKey = "lastScenePath"
+
+    init(audioLevels: AudioLevelsModel, scenePath: String?, tab: MainTab = .monitor,
+         camera: CameraPreset = .top, labelMode: LabelMode = .number, docshot: Bool = false) {
+        self.audioLevels = audioLevels
+        self.scenePath = scenePath
+        self.docshot = docshot
+        _tab = State(initialValue: tab)
+        _camera = State(initialValue: camera)
+        _labelMode = State(initialValue: labelMode)
+        _showLines = State(initialValue: docshot)
+        _selectedChannel = State(initialValue: docshot ? 1 : nil)
+    }
 
     var body: some View {
-        TabView(selection: $tab) {
-            LevelMeterGridView(model: audioLevels)
-                .tabItem { Text("Level Meters") }.tag(0)
-            VStack {
-                HStack {
-                    Button("Open .sscene…") { openScenePanel() }
-                    if let error = sceneModel.loadError {
-                        Text(error).foregroundStyle(.red).font(.caption)
-                    } else {
-                        Text("\(sceneModel.speakers.count) speakers").font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
+        let levelOverride = docshot ? DocShot.syntheticLevels(for: sceneModel.speakers) : nil
+        VStack(spacing: 0) {
+            topBar
+            TabView(selection: $tab) {
+                HSplitView {
+                    SpeakerSceneView(sceneModel: sceneModel, audio: audioLevels, levelOverride: levelOverride,
+                                     selectedChannel: $selectedChannel, camera: camera,
+                                     showLines: showLines, labelMode: labelMode)
+                        .frame(minWidth: 360, maxWidth: .infinity)
+                    RoutingPanel(sceneModel: sceneModel, audio: audioLevels, levelOverride: levelOverride,
+                                 selectedChannel: $selectedChannel)
+                        .frame(minWidth: 520, idealWidth: 660, maxWidth: 900)
                 }
-                .padding(8)
-                SpeakerSceneView(sceneModel: sceneModel, levels: audioLevels)
+                .tabItem { Text("Monitor") }.tag(MainTab.monitor)
+                LevelMeterGridView(model: audioLevels)
+                    .tabItem { Text("Meters") }.tag(MainTab.meters)
+                SettingsView(model: audioLevels)
+                    .tabItem { Text("Settings") }.tag(MainTab.settings)
             }
-            .tabItem { Text("3D Speaker View") }.tag(1)
-            SettingsView(model: audioLevels)
-                .tabItem { Text("Settings") }.tag(2)
         }
-        .frame(minWidth: 800, minHeight: 600)
+        .frame(minWidth: 1000, minHeight: 640)
+        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+            guard let provider = providers.first else { return false }
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                guard let path = url?.path else { return }
+                DispatchQueue.main.async { open(path) }
+            }
+            return true
+        }
         .onAppear {
-            if CommandLine.arguments.count > 1 { sceneModel.load(path: CommandLine.arguments[1]) }
-            if let dir = ProcessInfo.processInfo.environment["VAI_SNAPSHOT"] { runSnapshot(dir: dir) }
+            // onAppear can fire again (window hide/show); only the first one loads.
+            guard sceneModel.path == nil,
+                  let path = scenePath ?? UserDefaults.standard.string(forKey: Self.lastPathKey) else { return }
+            open(path)
         }
     }
 
-    // Debug hook: VAI_SNAPSHOT=<dir> writes meters.png / scene.png then quits.
-    private func runSnapshot(dir: String) {
-        func png(_ image: NSImage, _ name: String) {
-            guard let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
-                  let data = rep.representation(using: .png, properties: [:]) else { return }
-            try? data.write(to: URL(fileURLWithPath: dir).appendingPathComponent(name))
+    private var topBar: some View {
+        HStack(spacing: 10) {
+            Button("Open…") { openPanel() }
+                .keyboardShortcut("o")
+                .help("Open .sscene (⌘O) — or drop a file on the window")
+            Button("Reload") { sceneModel.reload() }
+                .keyboardShortcut("r")
+                .help("Reload the current file (⌘R)")
+                .disabled(sceneModel.path == nil)
+            Spacer()
+            if tab == .monitor { sceneControls }
         }
-        func findSCNView(_ v: NSView) -> SCNView? {
-            if let s = v as? SCNView { return s }
-            for c in v.subviews { if let s = findSCNView(c) { return s } }
-            return nil
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+    }
+
+    @ViewBuilder
+    private var sceneControls: some View {
+        Picker("Camera", selection: $camera) {
+            ForEach(CameraPreset.allCases) { Text($0.rawValue).tag($0) }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            guard let content = NSApp.windows.first?.contentView,
-                  let rep = content.bitmapImageRepForCachingDisplay(in: content.bounds) else {
-                FileHandle.standardError.write("snapshot: no window (\(NSApp.windows.count))\n".data(using: .utf8)!)
-                NSApp.terminate(nil); return
-            }
-            content.cacheDisplay(in: content.bounds, to: rep)
-            let img = NSImage(size: content.bounds.size); img.addRepresentation(rep); png(img, "meters.png")
-            tab = 1
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                if let scn = findSCNView(content) { png(scn.snapshot(), "scene.png") }
-                NSApp.terminate(nil)
-            }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        Toggle("発音ライン (> \(Int(LevelThreshold.line)) dBFS)", isOn: $showLines)
+        Picker("Labels", selection: $labelMode) {
+            ForEach(LabelMode.allCases) { Text($0.rawValue).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+    }
+
+    private func open(_ path: String) {
+        sceneModel.load(path: path)
+        if sceneModel.loadError == nil && !docshot {
+            UserDefaults.standard.set(path, forKey: Self.lastPathKey)
         }
     }
 
-    private func openScenePanel() {
+    /// Only ever called from a click / ⌘O.
+    private func openPanel() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "sscene") ?? .data]
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url {
-            sceneModel.load(path: url.path)
+            open(url.path)
         }
     }
 }

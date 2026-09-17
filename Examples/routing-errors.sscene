@@ -1,0 +1,33 @@
+# Deliberately broken routing, for checking the Monitor tab's warnings. Parses fine.
+[SCENE]
+Version	0.1
+Name	routing-errors
+Unit	meter
+CoordinateSystem	SSD_RH_ZUP
+AngleUnit	degree
+
+[OBJECT]
+# ID	Type	Name	Parent	X	Y	Z	Yaw	Pitch	Roll	Enabled
+1	speaker	Front	none	0	3	1.2	0	0	0	1
+2	speaker	Right	none	3	0	1.2	0	0	0	1
+3	speaker	Rear A	none	-0.5	-3	1.2	0	0	0	1
+4	speaker	Rear B	none	0.5	-3	1.2	0	0	0	1
+5	speaker	Left (ch 130)	none	-3	0	1.2	0	0	0	1
+6	speaker	Muted top	none	0	0	3	0	0	0	1
+10	truss	Disabled truss	none	0	-4	3	0	0	0	0
+11	speaker	On disabled truss	10	0	0	-0.3	0	0	0	1
+
+[SPEAKER]
+# ID	Channel	Gain	Delay	Mute
+1	1	0	0	0
+2	2	0	0	0
+3	3	0	0	0
+4	3	0	0	0
+5	130	0	0	0
+6	6	0	0	1
+11	7	0	0	0
+
+# Typo of [SPEAKER]: the parser keeps it and reports a warning.
+[SPEAKERS]
+# ID	Channel	Gain	Delay	Mute
+2	9	0	0	0

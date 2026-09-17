@@ -62,8 +62,8 @@ Ableton Live 等から仮想オーディオデバイスとして接続し、受�
 SSD は右手系・+Z-up・メートル単位。SceneKit は右手系・+Y-up。
 `Scene.h` が openFrameworks 向けに例示する変換 `(x, y, z) → (x, z, -y)` は
 「+Z-up → +Y-up」の回転であり、SceneKit も同じ右手系+Y-upなので
-**同じ変換式がそのまま使える**(`VisualizerApp/Sources/SSDBridge/ssd_bridge.cpp`
-の `ssdb_load_speakers` 参照)。
+**同じ変換式がそのまま使える**。変換は `ssdb_to_scenekit`(`SSDBridge/ssd_bridge.cpp`)
+1 か所だけにあり、ブリッジは SSD 座標の生値を返し、アプリは点・向きをすべてこの関数に通す。
 
 ## 設定可能パラメータ / ホスト決定パラメータ
 
@@ -133,7 +133,9 @@ virtual-audio-interface/
             ├── SSDSceneModel.swift      # .sscene ロード
             ├── LevelMeterGridView.swift # 128ch dBFSメーター (Canvas一枚描画、有効チャンネル数以外は減光)
             ├── SettingsView.swift       # チャンネル数/サンプルレート設定 + ホスト決定値表示
-            └── SpeakerSceneView.swift   # SceneKit 3D表示 + レベル反映
+            ├── SpeakerSceneView.swift   # SceneKit 3D/平面表示 + レベル反映 + クリック選択
+            ├── RoutingPanel.swift       # シーン情報・ルーティング警告・スピーカー一覧
+            └── LevelStyle.swift         # dBFS 変換と色 (3D と一覧で共用)
 ```
 
 ## 実装ロードマップ
@@ -187,8 +189,9 @@ configCounter) を追加。HAL Plugin は 200ms 周期のポーリングタイ�
       複数クライアント対応、実際のストリームフォーマット変更通知等。
 - [ ] **共有メモリの堅牢化**: HALPluginが未起動/クラッシュした場合の
       Appの復帰、shmセグメントの権限・サンドボックス対応。
-- [ ] **SceneKit UI改善**: カメラの初期アングル調整、スピーカーIDラベル表示、
-      Mute状態の視覚表現、Gain値の反映。
+- [x] **SceneKit UI改善**: カメラプリセット・自動フレーミング、Ch/名前ラベル、
+      Mute/Enabled の表現、ルーティング警告 (下の「Monitor タブ」)。
+- [ ] Gain/Delay の可視化への反映 (現状は一覧に数値表示のみ)。
 - [ ] **配布**: コード署名・notarization・インストーラ(pkg)化は未着手。
 
 ## ビルドと起動
@@ -201,7 +204,44 @@ open dist/VirtualAudioVisualizer.app --args "$PWD/Examples/ring-8.sscene"
 
 `swift run` で実行ファイルを直接起動すると SwiftUI がウィンドウを作らないため、
 必ず `.app` から起動する。ヘッドレス確認は `dist/VAIControl.app/Contents/MacOS/VAIControl --status`、
-`make -C Tools check`(SSD 軸変換と共有メモリ読み出し)。
+`make -C Tools check`(selfcheck: 共有メモリ読み出し / ssdcheck: SSDBridge の親子変換・Mute/Enabled・軸変換)。
+
+## Monitor タブ (スピーカー配置 / ルーティング検証)
+
+DAW から入った信号が SSD で意図したスピーカーから出ているかを確認する画面。
+左が 3D / 平面図、右がルーティングパネル。チャンネル選択 (1 始まり) は両者で共有する。
+
+- **開く**: Open (⌘O)、Reload (⌘R)、ウィンドウへ .sscene をドロップ。最後に開いたファイルは次回起動時に自動で開く
+  (起動引数で .sscene を渡した場合はそちらが優先)。読込エラーはパネルに赤字で表示する
+- **カメラ**: Top (正射影の平面図、画面上 = SSD +Y 前方、右 = +X)、Front (後方から +Y を見る、右 = +X)、
+  Side (+X 側から見る、右 = +Y 前方)、Perspective (マウスで回転・ズーム)。読込時にスピーカー全体に合わせる
+- **スピーカー**: 色は dBFS で -60 以下グレー → 緑 → -12 で黄 → -3 超で赤。発光と大きさもレベルに比例。
+  Mute は減光 + 赤い ×、Enabled=0 (親が無効な場合を含む) は半透明。SSD には SPEAKER の正面軸の定義がないため、
+  向きや指向性は描かない (Yaw/Pitch/Roll は親子の位置計算にだけ効く)
+- **発音ライン**: -40 dBFS を超えるスピーカーへ原点 (リスナー) から線を引く
+- **REVIEW_VOLUME**: 仕様どおり文脈用サイズとして数値表示のみ (3D には描かない)
+
+| 警告 | 条件 |
+|---|---|
+| 割り当てなし (赤) | -60 dBFS を超える信号があるのに、そのチャンネルのスピーカーがない |
+| デバイス範囲外 (赤) | スピーカーのチャンネルがデバイスの有効チャンネル数を超える (ドライバ未接続時は 128 で判定) |
+| Mute / Enabled=0 に信号 (橙) | Mute または無効なスピーカーのチャンネルに -60 dBFS を超える信号 |
+| パーサー警告 (橙) | `Scene.h` の warnings (未知セクションなど) |
+| チャンネル共有 (青) | 同じチャンネルに複数スピーカー (情報) |
+
+サンプル: `Examples/dome-24.sscene` (耳の高さ 8 + 上層 8 + 天井 4 + サブ 2 + Yaw 90° のトラスに子 2、
+Mute と Enabled=0 を含む)、`Examples/routing-errors.sscene` (警告の確認用)。
+
+### 自己撮影モード (--docshot)
+
+```bash
+dist/VirtualAudioVisualizer.app/Contents/MacOS/VisualizerApp --docshot /tmp/vai-docshot "$PWD/Examples/dome-24.sscene"
+```
+
+素の NSWindow (1400×900) に UI を載せ、Monitor の Top / Front / Side / Perspective、Meters、Settings を
+順に PNG 保存して終了する (経過は `<outdir>/docshot.log`)。Monitor は合成レベル
+(ch1 -3、ch3 -20、ch9 -50、未割り当ての ch30 -10、Mute / 無効スピーカーのチャンネル -10) で描く。
+このモードだけウィンドウを `orderFrontRegardless` で表示し、最後に開いたファイルの記録は更新しない。
 
 ## VAIControl (ドライバ ON/OFF)
 
