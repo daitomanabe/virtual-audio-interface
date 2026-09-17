@@ -137,13 +137,13 @@ private struct DriverStatusBar: View {
     var body: some View {
         let s = driver.snapshot
         HStack(spacing: 8) {
-            Circle().fill(s.isOn ? .green : s.isOff ? .gray : .orange).frame(width: 8, height: 8)
+            Circle().fill(s.isOn && !s.outdated ? .green : s.isOff ? .gray : .orange).frame(width: 8, height: 8)
             if driver.busy { ProgressView().controlSize(.small) }
-            Button("Driver ON") { driver.turnOn() }
-                .disabled(driver.busy || s.isOn || driver.bundledDriver == nil)
+            Button(s.outdated ? "Driver Update" : "Driver ON") { driver.turnOn() }
+                .disabled(driver.busy || (s.isOn && !s.outdated) || driver.bundledDriver == nil)
             Button("Driver OFF") { driver.turnOff() }
                 .disabled(driver.busy || s.isOff)
         }
-        .help(driver.message.isEmpty ? (s.isOn ? "Driver ON" : s.isOff ? "Driver OFF" : "不整合") : driver.message)
+        .help(driver.message.isEmpty ? (s.outdated ? "インストール済みドライバがアプリ同梱版と異なります" : s.isOn ? "Driver ON" : s.isOff ? "Driver OFF" : "不整合") : driver.message)
     }
 }

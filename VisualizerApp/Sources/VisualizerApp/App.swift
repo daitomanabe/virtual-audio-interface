@@ -7,7 +7,7 @@ enum Main {
         let args = Array(CommandLine.arguments.dropFirst())
         if args.contains("--status") {
             let s = DriverController.probe()
-            print("installed=\(s.installed) helperPIDs=\(s.helperPIDs) devicePresent=\(s.devicePresent) on=\(s.isOn) off=\(s.isOff)")
+            print("installed=\(s.installed) helperPIDs=\(s.helperPIDs) devicePresent=\(s.devicePresent) outdated=\(s.outdated) on=\(s.isOn) off=\(s.isOff)")
             exit(0)
         }
         if let i = args.firstIndex(of: "--docshot") {

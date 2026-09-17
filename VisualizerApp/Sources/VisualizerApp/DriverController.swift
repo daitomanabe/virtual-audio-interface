@@ -13,6 +13,7 @@ final class DriverController: ObservableObject {
         var installed = false
         var helperPIDs: [Int32] = []
         var devicePresent = false
+        var outdated = false   // installed driver binary differs from the one bundled in this app
         var isOn: Bool { installed && !helperPIDs.isEmpty && devicePresent }
         var isOff: Bool { !installed && helperPIDs.isEmpty && !devicePresent }
     }
@@ -34,9 +35,13 @@ final class DriverController: ObservableObject {
     func refresh() { snapshot = Self.probe() }
 
     nonisolated static func probe() -> Snapshot {
-        Snapshot(installed: FileManager.default.fileExists(atPath: halPath),
-                 helperPIDs: helperPIDs(),
-                 devicePresent: devicePresent())
+        let exe = "/Contents/MacOS/VirtualAudioInterfaceDriver"
+        let installed = FileManager.default.fileExists(atPath: halPath)
+        let bundled = Bundle.main.url(forResource: "VirtualAudioInterfaceDriver", withExtension: "driver")
+        let outdated = installed && bundled.map {
+            !FileManager.default.contentsEqual(atPath: halPath + exe, andPath: $0.path + exe)
+        } ?? false
+        return Snapshot(installed: installed, helperPIDs: helperPIDs(), devicePresent: devicePresent(), outdated: outdated)
     }
 
     func turnOn() {
@@ -46,7 +51,7 @@ final class DriverController: ObservableObject {
         }
         let dst = Self.shq(Self.halPath)
         run(label: "ON", script: "/bin/rm -rf \(dst) && /bin/cp -R \(Self.shq(src.path)) \(dst) && /usr/bin/xattr -cr \(dst) && /usr/sbin/chown -R root:wheel \(dst) && { /usr/bin/killall coreaudiod; true; }",
-            done: { $0.isOn })
+            done: { $0.isOn && !$0.outdated })
     }
 
     func turnOff() {

@@ -16,7 +16,7 @@ struct SettingsView: View {
         Form {
             Section("ドライバ") {
                 let s = driver.snapshot
-                LabeledContent("配置", value: s.installed ? "あり" : "なし")
+                LabeledContent("配置", value: !s.installed ? "なし" : s.outdated ? "あり (アプリ同梱版と異なる → Driver Update で更新)" : "あり (アプリ同梱版と一致)")
                 LabeledContent("PID", value: s.helperPIDs.isEmpty ? "なし" : "PID " + s.helperPIDs.map(String.init).joined(separator: ", "))
                 LabeledContent("CoreAudio デバイス", value: s.devicePresent ? "登録あり" : "なし")
                 if !driver.message.isEmpty {
