@@ -1,0 +1,68 @@
+# Example dome: 8 ear-height + 8 upper + 4 ceiling + 2 subs + 2 on a parented truss.
+# Axes: SSD_RH_ZUP, X = right, Y = front, Z = up. Listener reference = origin.
+[SCENE]
+Version	0.1
+Name	dome-24
+Unit	meter
+CoordinateSystem	SSD_RH_ZUP
+AngleUnit	degree
+
+[OBJECT]
+# ID	Type	Name	Parent	X	Y	Z	Yaw	Pitch	Roll	Enabled
+1	speaker	L1	none	0	4	1.2	0	0	0	1
+2	speaker	L2	none	2.828427	2.828427	1.2	0	0	0	1
+3	speaker	L3	none	4	0	1.2	0	0	0	1
+4	speaker	L4	none	2.828427	-2.828427	1.2	0	0	0	1
+5	speaker	L5	none	0	-4	1.2	0	0	0	1
+6	speaker	L6	none	-2.828427	-2.828427	1.2	0	0	0	1
+7	speaker	L7	none	-4	0	1.2	0	0	0	1
+8	speaker	L8	none	-2.828427	2.828427	1.2	0	0	0	1
+9	speaker	U1	none	1.339392	3.233578	3.0	0	0	0	1
+10	speaker	U2	none	3.233578	1.339392	3.0	0	0	0	1
+11	speaker	U3	none	3.233578	-1.339392	3.0	0	0	0	1
+12	speaker	U4	none	1.339392	-3.233578	3.0	0	0	0	1
+13	speaker	U5	none	-1.339392	-3.233578	3.0	0	0	0	1
+14	speaker	U6	none	-3.233578	-1.339392	3.0	0	0	0	1
+15	speaker	U7	none	-3.233578	1.339392	3.0	0	0	0	1
+16	speaker	U8	none	-1.339392	3.233578	3.0	0	0	0	1
+17	speaker	T1	none	0	1.5	4.5	0	0	0	1
+18	speaker	T2	none	1.5	0	4.5	0	0	0	1
+19	speaker	T3	none	0	-1.5	4.5	0	0	0	1
+20	speaker	T4	none	-1.5	0	4.5	0	0	0	1
+21	speaker	SUB1	none	-1.2	4.8	0.3	0	0	0	1
+22	speaker	SUB2	none	1.2	4.8	0.3	0	0	0	1
+# Right-side truss running front-back (Yaw 90 turns its local X onto world +Y).
+100	truss	TRUSS-R	none	5	0	3.5	90	0	0	1
+23	speaker	TR1	100	2	0	-0.4	0	0	0	1
+24	speaker	TR2	100	-2	0	-0.4	0	0	0	0
+
+[SPEAKER]
+# ID	Channel	Gain	Delay	Mute
+1	1	0	0	0
+2	2	0	0	0
+3	3	0	0	0
+4	4	0	0	0
+5	5	0	0	0
+6	6	0	0	0
+7	7	0	0	0
+8	8	0	0	0
+9	9	-1.5	1.2	0
+10	10	-1.5	1.2	0
+11	11	-1.5	1.2	0
+12	12	-1.5	1.2	0
+13	13	-1.5	1.2	0
+14	14	-1.5	1.2	0
+15	15	-1.5	1.2	0
+16	16	-1.5	1.2	0
+17	17	-3	2.5	0
+18	18	-3	2.5	0
+19	19	-3	2.5	0
+20	20	-3	2.5	0
+21	21	-6	4	0
+22	22	-6	4	0
+23	23	0	0	1
+24	24	0	0	0
+
+[REVIEW_VOLUME]
+# Width	Depth	Height	Status
+12	12	6	CONTEXT_ONLY
