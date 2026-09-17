@@ -4,9 +4,10 @@ import UniformTypeIdentifiers
 enum MainTab: Hashable { case monitor, meters, settings }
 
 struct ContentView: View {
-    /// Not observed here: only the views that show levels subscribe, so the
-    /// whole window does not re-render at 30 Hz.
+    /// Not observed here: only the views that show levels/driver state subscribe,
+    /// so the whole window does not re-render at 30 Hz / 1 Hz.
     let audioLevels: AudioLevelsModel
+    let driver: DriverController
     let scenePath: String?           // CLI argument; nil -> last opened file
     let docshot: Bool
 
@@ -19,9 +20,10 @@ struct ContentView: View {
 
     private static let lastPathKey = "lastScenePath"
 
-    init(audioLevels: AudioLevelsModel, scenePath: String?, tab: MainTab = .monitor,
+    init(audioLevels: AudioLevelsModel, driver: DriverController, scenePath: String?, tab: MainTab = .monitor,
          camera: CameraPreset = .top, labelMode: LabelMode = .number, docshot: Bool = false) {
         self.audioLevels = audioLevels
+        self.driver = driver
         self.scenePath = scenePath
         self.docshot = docshot
         _tab = State(initialValue: tab)
@@ -53,7 +55,7 @@ struct ContentView: View {
                     assigned: sceneModel.speakers.isEmpty ? nil : Set(sceneModel.speakers.map(\.channel)),
                     selectedChannel: $selectedChannel)
                     .tabItem { Text("Meters") }.tag(MainTab.meters)
-                SettingsView(model: audioLevels)
+                SettingsView(model: audioLevels, driver: driver)
                     .tabItem { Text("Settings") }.tag(MainTab.settings)
             }
         }
@@ -85,6 +87,7 @@ struct ContentView: View {
                 .disabled(sceneModel.path == nil)
             Spacer()
             if tab == .monitor { sceneControls }
+            DriverStatusBar(driver: driver)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -122,5 +125,25 @@ struct ContentView: View {
         if panel.runModal() == .OK, let url = panel.url {
             open(url.path)
         }
+    }
+}
+
+/// Top-bar driver ON/OFF control. Only this subscribes to DriverController's
+/// 1Hz status updates, so the rest of ContentView doesn't re-render with it.
+/// Enable/disable conditions mirror the former standalone VAIControl app.
+private struct DriverStatusBar: View {
+    @ObservedObject var driver: DriverController
+
+    var body: some View {
+        let s = driver.snapshot
+        HStack(spacing: 8) {
+            Circle().fill(s.isOn ? .green : s.isOff ? .gray : .orange).frame(width: 8, height: 8)
+            if driver.busy { ProgressView().controlSize(.small) }
+            Button("Driver ON") { driver.turnOn() }
+                .disabled(driver.busy || s.isOn || driver.bundledDriver == nil)
+            Button("Driver OFF") { driver.turnOff() }
+                .disabled(driver.busy || s.isOff)
+        }
+        .help(driver.message.isEmpty ? (s.isOn ? "Driver ON" : s.isOff ? "Driver OFF" : "不整合") : driver.message)
     }
 }
