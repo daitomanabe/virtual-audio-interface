@@ -46,7 +46,12 @@ struct ContentView: View {
                         .frame(minWidth: 520, idealWidth: 660, maxWidth: 900)
                 }
                 .tabItem { Text("Monitor") }.tag(MainTab.monitor)
-                LevelMeterGridView(model: audioLevels)
+                LevelMeterGridView(
+                    model: audioLevels,
+                    labels: Dictionary(grouping: sceneModel.speakers, by: \.channel)
+                        .mapValues { $0.map(\.name).joined(separator: ",") },
+                    assigned: sceneModel.speakers.isEmpty ? nil : Set(sceneModel.speakers.map(\.channel)),
+                    selectedChannel: $selectedChannel)
                     .tabItem { Text("Meters") }.tag(MainTab.meters)
                 SettingsView(model: audioLevels)
                     .tabItem { Text("Settings") }.tag(MainTab.settings)
