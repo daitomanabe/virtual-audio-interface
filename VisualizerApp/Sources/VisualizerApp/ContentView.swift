@@ -25,6 +25,8 @@ struct ContentView: View {
                 SpeakerSceneView(sceneModel: sceneModel, levels: audioLevels)
             }
             .tabItem { Text("3D Speaker View") }.tag(1)
+            SettingsView(model: audioLevels)
+                .tabItem { Text("Settings") }.tag(2)
         }
         .frame(minWidth: 800, minHeight: 600)
         .onAppear {
