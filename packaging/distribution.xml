@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+    <title>Virtual Audio Interface</title>
+    <organization>com.daitomanabe</organization>
+    <domains enable_localSystem="true"/>
+    <options customize="never" require-scripts="false" hostArchitectures="arm64,x86_64" rootVolumeOnly="true"/>
+    <volume-check>
+        <allowed-os-versions>
+            <os-version min="13.0"/>
+        </allowed-os-versions>
+    </volume-check>
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <license file="license.txt" mime-type="text/plain"/>
+
+    <!-- Both components are required: hidden from the choices UI so they can't be deselected. -->
+    <choices-outline>
+        <line choice="app"/>
+        <line choice="driver"/>
+    </choices-outline>
+    <choice id="app" title="Virtual Audio Interface.app" visible="false" selected="true">
+        <pkg-ref id="com.daitomanabe.virtualaudiointerface.app.pkg"/>
+    </choice>
+    <choice id="driver" title="HAL driver" visible="false" selected="true">
+        <pkg-ref id="com.daitomanabe.virtualaudiointerface.driver.pkg"/>
+    </choice>
+
+    <pkg-ref id="com.daitomanabe.virtualaudiointerface.app.pkg" onConclusion="none">app.pkg</pkg-ref>
+    <pkg-ref id="com.daitomanabe.virtualaudiointerface.driver.pkg" onConclusion="none">driver.pkg</pkg-ref>
+</installer-gui-script>

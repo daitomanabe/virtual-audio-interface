@@ -1,0 +1,5 @@
+#!/bin/bash
+# Removes any existing driver bundle before the new one is laid down, so a
+# stale/leftover copy never coexists with the one this package installs.
+rm -rf /Library/Audio/Plug-Ins/HAL/VirtualAudioInterfaceDriver.driver
+exit 0
