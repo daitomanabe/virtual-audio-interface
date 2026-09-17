@@ -39,6 +39,8 @@ the sounding speakers lit up, and warnings for routing mistakes.
 
 ![Monitor tab, perspective view](docs/images/monitor-perspective.png)
 
+The interface labels are currently Japanese; localization is on the [roadmap](TODO.md).
+
 ## Requirements
 
 - macOS 13 or later, Apple silicon or Intel (universal binaries)
