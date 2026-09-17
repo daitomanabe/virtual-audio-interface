@@ -8,6 +8,7 @@ struct ContentView: View {
     /// whole window does not re-render at 30 Hz.
     let audioLevels: AudioLevelsModel
     let scenePath: String?           // CLI argument; nil -> last opened file
+    let docshot: Bool
 
     @StateObject private var sceneModel = SSDSceneModel()
     @State private var tab: MainTab
@@ -19,17 +20,19 @@ struct ContentView: View {
     private static let lastPathKey = "lastScenePath"
 
     init(audioLevels: AudioLevelsModel, scenePath: String?, tab: MainTab = .monitor,
-         camera: CameraPreset = .top, labelMode: LabelMode = .number) {
+         camera: CameraPreset = .top, labelMode: LabelMode = .number, docshot: Bool = false) {
         self.audioLevels = audioLevels
         self.scenePath = scenePath
+        self.docshot = docshot
         _tab = State(initialValue: tab)
         _camera = State(initialValue: camera)
         _labelMode = State(initialValue: labelMode)
-        _showLines = State(initialValue: false)
+        _showLines = State(initialValue: docshot)
+        _selectedChannel = State(initialValue: docshot ? 1 : nil)
     }
 
     var body: some View {
-        let levelOverride: [Float]? = nil
+        let levelOverride = docshot ? DocShot.syntheticLevels(for: sceneModel.speakers) : nil
         VStack(spacing: 0) {
             topBar
             TabView(selection: $tab) {
@@ -101,7 +104,7 @@ struct ContentView: View {
 
     private func open(_ path: String) {
         sceneModel.load(path: path)
-        if sceneModel.loadError == nil {
+        if sceneModel.loadError == nil && !docshot {
             UserDefaults.standard.set(path, forKey: Self.lastPathKey)
         }
     }
