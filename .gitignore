@@ -3,3 +3,5 @@ build/
 .swiftpm/
 *.xcodeproj/xcuserdata/
 .DS_Store
+Tools/selfcheck
+Tools/fake_meter
