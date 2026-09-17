@@ -1,0 +1,4 @@
+module SSDBridge {
+    header "ssd_bridge.h"
+    export *
+}
