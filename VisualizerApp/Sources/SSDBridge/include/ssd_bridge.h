@@ -1,4 +1,4 @@
-// C ABI wrapper around ssd::Scene (Scene.h, spatial-audio-kit-and-ssd-v4) so
+// C ABI wrapper around this repository's SSD v0.1 reader (../ssd_reader.h) so
 // Swift can load an .sscene file and read SPEAKER channel -> world position
 // without a Swift/C++ interop dependency. Plain C types only, arrays are
 // fixed-size and caller-allocated to keep memory ownership simple.
@@ -19,7 +19,7 @@ typedef struct {
 } SSDBVec3;
 
 // SSD (right-handed, +Z up, X right / Y front) -> SceneKit (right-handed, +Y up):
-// (x, y, z) -> (x, z, -y). A rotation, not a mirror (ssd::toOpenFrameworks).
+// (x, y, z) -> (x, z, -y). A rotation, not a mirror.
 // The only place this mapping lives: the app converts every point through it.
 SSDBVec3 ssdb_to_scenekit(double x, double y, double z);
 
@@ -30,7 +30,7 @@ typedef struct {
     double gainDb;                 // SPEAKER Gain (dB)
     double delayMs;                // SPEAKER Delay (ms)
     bool mute;                     // SPEAKER Mute
-    bool active;                   // scene.active(id): own Enabled && all ancestors enabled
+    bool active;                   // own Enabled && all ancestors enabled
     double x, y, z;                // world position in raw SSD axes (meters), parents applied
 } SSDBSpeakerInfo;
 

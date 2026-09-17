@@ -1,5 +1,5 @@
 #include "include/ssd_bridge.h"
-#include "ssd/Scene.h"
+#include "ssd_reader.h"
 #include <cstring>
 
 namespace {
@@ -11,8 +11,7 @@ void copyText(char *dst, size_t capacity, const std::string &src) {
 } // namespace
 
 extern "C" SSDBVec3 ssdb_to_scenekit(double x, double y, double z) {
-    ssd::Vec3 p = ssd::toOpenFrameworks({x, y, z}); // same +Z-up -> +Y-up right-handed rotation
-    return {p.x, p.y, p.z};
+    return {x, z, -y}; // +Z-up -> +Y-up, a right-handed rotation about X
 }
 
 extern "C" int32_t ssdb_load_scene(const char *path, SSDBSceneInfo *outInfo,
@@ -20,17 +19,18 @@ extern "C" int32_t ssdb_load_scene(const char *path, SSDBSceneInfo *outInfo,
                                    char *outWarnings, int32_t warningsCapacity,
                                    char *outErrorMessage, int32_t errorMessageCapacity) {
     try {
-        ssd::Scene scene = ssd::load(path);
+        ssdreader::Scene scene = ssdreader::load(path);
         std::vector<std::string> warnings = scene.warnings;
 
         *outInfo = SSDBSceneInfo{};
-        copyText(outInfo->name, sizeof outInfo->name, scene.property("Name"));
-        const auto &volume = scene.rows("REVIEW_VOLUME"); // not validated by Scene.h
+        auto name = scene.properties.find("Name");
+        if (name != scene.properties.end()) copyText(outInfo->name, sizeof outInfo->name, name->second);
+        const auto &volume = scene.sections["REVIEW_VOLUME"]; // context only: bad values warn, not fail
         if (!volume.empty()) {
             try {
-                outInfo->reviewWidth = ssd::number(volume[0], 0);
-                outInfo->reviewDepth = ssd::number(volume[0], 1);
-                outInfo->reviewHeight = ssd::number(volume[0], 2);
+                outInfo->reviewWidth = ssdreader::number(volume[0], 0, "Width");
+                outInfo->reviewDepth = ssdreader::number(volume[0], 1, "Depth");
+                outInfo->reviewHeight = ssdreader::number(volume[0], 2, "Height");
                 outInfo->hasReviewVolume = true;
             } catch (const std::exception &e) {
                 warnings.push_back(std::string("REVIEW_VOLUME ignored: ") + e.what());
@@ -38,27 +38,25 @@ extern "C" int32_t ssdb_load_scene(const char *path, SSDBSceneInfo *outInfo,
         }
 
         int32_t count = 0;
-        const auto &rows = scene.rows("SPEAKER");
-        for (const auto &row : rows) {
+        for (const auto &speaker : scene.speakers) {
             if (count >= maxSpeakers) {
                 warnings.push_back("Only the first " + std::to_string(maxSpeakers) + " of " +
-                                   std::to_string(rows.size()) + " SPEAKER rows are shown");
+                                   std::to_string(scene.speakers.size()) + " SPEAKER rows are shown");
                 break;
             }
-            const std::string &id = row[0];
-            ssd::Vec3 p = scene.world(id).point({0, 0, 0});
+            const ssdreader::Object &object = scene.objects.at(speaker.id);
             SSDBSpeakerInfo &out = outSpeakers[count++];
             out = SSDBSpeakerInfo{};
-            copyText(out.objectId, sizeof out.objectId, id);
-            copyText(out.name, sizeof out.name, scene.objects.at(id).name);
-            out.channel = static_cast<int32_t>(ssd::number(row, 1)); // validated 1..INT32_MAX
-            out.gainDb = ssd::number(row, 2);
-            out.delayMs = ssd::number(row, 3);
-            out.mute = ssd::flag(row, 4);
-            out.active = scene.active(id);
-            out.x = p.x;
-            out.y = p.y;
-            out.z = p.z;
+            copyText(out.objectId, sizeof out.objectId, speaker.id);
+            copyText(out.name, sizeof out.name, object.name);
+            out.channel = speaker.channel;
+            out.gainDb = speaker.gainDb;
+            out.delayMs = speaker.delayMs;
+            out.mute = speaker.mute;
+            out.active = object.active;
+            out.x = object.world.t[0];
+            out.y = object.world.t[1];
+            out.z = object.world.t[2];
         }
 
         std::string joined;
