@@ -13,7 +13,9 @@
 #include <stdint.h>
 #include <math.h>
 
+#ifndef VAI_SHM_NAME
 #define VAI_SHM_NAME "/vai_meter_v3"
+#endif
 #define VAI_MAX_CHANNELS 128
 #define VAI_SHM_MAGIC 0x56414933u // 'VAI3'
 

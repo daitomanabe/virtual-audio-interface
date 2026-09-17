@@ -10,3 +10,8 @@ fake_meter: fake_meter.c
 	clang -o $@ $<
 clean:
 	rm -f selfcheck fake_meter ssdcheck
+
+harness: halharness.cpp ../HALPlugin/src/VirtualAudioDevicePlugin.cpp
+	clang++ -std=c++17 -g -O1 -fsanitize=address,undefined -fno-sanitize-recover=all '-DVAI_SHM_NAME="/vai_harness"' \
+		-framework CoreFoundation -framework CoreAudio -o halharness $^
+	./halharness
