@@ -46,6 +46,14 @@ else
   set +e
   swift build -c release --package-path VisualizerApp --triple x86_64-apple-macosx13.0 >/tmp/vai_swift_x86.log 2>&1
   X86_STATUS=$?
+  if [ $X86_STATUS -ne 0 ]; then
+    # SwiftPM shares build.db between triples and can get stuck ("not registered");
+    # a clean rebuild of the x86_64 tree fixes it.
+    echo "==> x86_64 build failed, retrying after cleaning VisualizerApp/.build/x86_64-apple-macosx"
+    rm -rf VisualizerApp/.build/x86_64-apple-macosx
+    swift build -c release --package-path VisualizerApp --triple x86_64-apple-macosx13.0 >/tmp/vai_swift_x86.log 2>&1
+    X86_STATUS=$?
+  fi
   set -e
   if [ $X86_STATUS -eq 0 ]; then
     X86_BIN="VisualizerApp/.build/x86_64-apple-macosx/release/VisualizerApp"
