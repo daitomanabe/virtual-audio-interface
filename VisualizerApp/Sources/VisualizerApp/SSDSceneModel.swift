@@ -13,8 +13,13 @@ struct Speaker: Identifiable {
 final class SSDSceneModel: ObservableObject {
     @Published var speakers: [Speaker] = []
     @Published var loadError: String?
+    /// Bumped on every load() call, including reloads of a .sscene with the
+    /// same speaker count, so observers can detect "loaded again" separately
+    /// from "speaker count changed".
+    @Published var generation: Int = 0
 
     func load(path: String) {
+        generation += 1
         var buffer = [SSDBSpeaker](repeating: SSDBSpeaker(), count: Int(SSDB_MAX_SPEAKERS))
         var errorMessage = [CChar](repeating: 0, count: 256)
         let count = path.withCString { cPath in

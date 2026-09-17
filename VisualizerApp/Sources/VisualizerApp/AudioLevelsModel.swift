@@ -23,13 +23,22 @@ final class AudioLevelsModel: ObservableObject {
         abrClose()
     }
 
+    // ponytail: fixed decay constant, tune if 30Hz feels too slow/fast to
+    // read; per-channel-configurable decay would be premature here.
+    private let decay: Float = 0.85
+
     private func tick() {
         var buffer = [Float](repeating: 0, count: Self.channelCount)
         let n = buffer.withUnsafeMutableBufferPointer { ptr -> UInt32 in
             abrReadLevels(ptr.baseAddress, UInt32(Self.channelCount))
         }
         if n > 0 {
-            levels = buffer
+            // Shared memory is overwritten every IO cycle (~ms), so a raw
+            // 30Hz poll misses transients between polls. Peak-hold + decay
+            // so a brief spike stays visible.
+            for i in 0..<Self.channelCount {
+                levels[i] = max(buffer[i], levels[i] * decay)
+            }
         }
     }
 }

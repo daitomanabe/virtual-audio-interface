@@ -24,8 +24,10 @@ struct SpeakerSceneView: NSViewRepresentable {
 
     func updateNSView(_ view: SCNView, context: Context) {
         guard let root = view.scene?.rootNode else { return }
-        // Rebuild speaker nodes only when the speaker set changes.
-        if context.coordinator.lastSpeakerCount != sceneModel.speakers.count {
+        // Rebuild speaker nodes whenever a new .sscene was loaded (even if it
+        // has the same speaker count as the previous one) or the count changed.
+        if context.coordinator.lastGeneration != sceneModel.generation ||
+            context.coordinator.lastSpeakerCount != sceneModel.speakers.count {
             root.childNodes.filter { $0.name == "speaker" }.forEach { $0.removeFromParentNode() }
             for speaker in sceneModel.speakers {
                 let sphere = SCNSphere(radius: 0.15)
@@ -38,6 +40,7 @@ struct SpeakerSceneView: NSViewRepresentable {
                 root.addChildNode(node)
             }
             context.coordinator.lastSpeakerCount = sceneModel.speakers.count
+            context.coordinator.lastGeneration = sceneModel.generation
         }
         // Per-frame level highlight.
         for node in root.childNodes where node.name == "speaker" {
@@ -51,5 +54,5 @@ struct SpeakerSceneView: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
-    final class Coordinator { var lastSpeakerCount: Int = -1 }
+    final class Coordinator { var lastSpeakerCount: Int = -1; var lastGeneration: Int = -1 }
 }
