@@ -56,12 +56,7 @@ int main(int argc, char **argv) {
     if (abrReadStatus(&status)) {
         std::printf("status: sr=%.0f iobuf=%u running=%u clients=%u\n",
                      status.sampleRate, status.ioBufferFrameSize, status.isRunning, status.clientCount);
-        uint64_t beforeConfig = status.configCounter;
-        bool wrote = abrWriteConfig(64, 48000.0);
-        assert(wrote);
-        VAIStatus after = {};
-        abrReadStatus(&after);
-        assert(after.configCounter == beforeConfig + 1);
+        // Read-only on purpose: writing config here reconfigures a live driver.
     }
     std::puts("OK");
     return 0;
