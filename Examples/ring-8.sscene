@@ -1,0 +1,28 @@
+[SCENE]
+Version	0.1
+Name	ring-8
+Unit	meter
+CoordinateSystem	SSD_RH_ZUP
+AngleUnit	degree
+
+[OBJECT]
+# ID	Type	Name	Parent	X	Y	Z	Yaw	Pitch	Roll	Enabled
+1	speaker	SP1	none	3.000	0.000	1.0	0	0	0	1
+2	speaker	SP2	none	2.121	2.121	1.5	0	0	0	1
+3	speaker	SP3	none	0.000	3.000	1.0	0	0	0	1
+4	speaker	SP4	none	-2.121	2.121	1.5	0	0	0	1
+5	speaker	SP5	none	-3.000	0.000	1.0	0	0	0	1
+6	speaker	SP6	none	-2.121	-2.121	1.5	0	0	0	1
+7	speaker	SP7	none	-0.000	-3.000	1.0	0	0	0	1
+8	speaker	SP8	none	2.121	-2.121	1.5	0	0	0	1
+
+[SPEAKER]
+# ID	Channel	Gain	Delay	Mute
+1	1	0	0	0
+2	2	0	0	0
+3	3	0	0	0
+4	4	0	0	0
+5	5	0	0	0
+6	6	0	0	0
+7	7	0	0	0
+8	8	0	0	0
