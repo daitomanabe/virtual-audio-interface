@@ -17,7 +17,10 @@ enum Main {
             }
             DocShot.run(outDir: args[i + 1], scenePath: args.count > i + 2 ? args[i + 2] : nil)
         } else {
-            VirtualAudioVisualizerApp.main()
+            let app = NSApplication.shared
+            app.delegate = AppDelegate.shared
+            app.setActivationPolicy(.regular)
+            app.run()
         }
     }
 
@@ -28,16 +31,63 @@ enum Main {
     }
 }
 
-struct VirtualAudioVisualizerApp: App {
-    private let audioLevels = AudioLevelsModel()   // one poller shared by every window
-    private let driver = DriverController()        // one driver-state owner shared by every window
+/// Plain AppKit window instead of a SwiftUI WindowGroup: when launched without activation
+/// (e.g. `open` from a terminal that keeps focus) WindowGroup never creates its window.
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    static let shared = AppDelegate()
+    private let audioLevels = AudioLevelsModel()
+    private let driver = DriverController()
+    private var window: NSWindow?
 
-    init() { NSApplication.shared.setActivationPolicy(.regular) }
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.mainMenu = Self.makeMainMenu()
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1400, height: 900),
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                              backing: .buffered, defer: false)
+        window.title = "Virtual Audio Interface"
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: ContentView(audioLevels: audioLevels, driver: driver,
+                                                                 scenePath: Main.scenePathArgument))
+        if !window.setFrameUsingName("MainWindow") { window.center() }
+        window.setFrameAutosaveName("MainWindow")
+        window.makeKeyAndOrderFront(nil) // launch flow only; no activate()
+        self.window = window
+    }
 
-    var body: some Scene {
-        WindowGroup {
-            ContentView(audioLevels: audioLevels, driver: driver, scenePath: Main.scenePathArgument)
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+
+    private static func makeMainMenu() -> NSMenu {
+        func item(_ title: String, _ action: Selector?, _ key: String = "") -> NSMenuItem {
+            NSMenuItem(title: title, action: action, keyEquivalent: key)
         }
+        func menu(_ title: String, _ items: [NSMenuItem]) -> NSMenuItem {
+            let m = NSMenu(title: title)
+            items.forEach(m.addItem)
+            let top = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            top.submenu = m
+            return top
+        }
+        let main = NSMenu()
+        main.addItem(menu("Virtual Audio Interface", [
+            item("Hide Virtual Audio Interface", #selector(NSApplication.hide(_:)), "h"),
+            .separator(),
+            item("Quit Virtual Audio Interface", #selector(NSApplication.terminate(_:)), "q"),
+        ]))
+        main.addItem(menu("Edit", [
+            item("Undo", Selector(("undo:")), "z"),
+            item("Redo", Selector(("redo:")), "Z"),
+            .separator(),
+            item("Cut", #selector(NSText.cut(_:)), "x"),
+            item("Copy", #selector(NSText.copy(_:)), "c"),
+            item("Paste", #selector(NSText.paste(_:)), "v"),
+            item("Select All", #selector(NSText.selectAll(_:)), "a"),
+        ]))
+        main.addItem(menu("Window", [
+            item("Minimize", #selector(NSWindow.performMiniaturize(_:)), "m"),
+            item("Close", #selector(NSWindow.performClose(_:)), "w"),
+        ]))
+        return main
     }
 }
 
