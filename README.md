@@ -181,16 +181,29 @@ configCounter) を追加。HAL Plugin は 200ms 周期のポーリングタイ�
       Mute状態の視覚表現、Gain値の反映。
 - [ ] **配布**: コード署名・notarization・インストーラ(pkg)化は未着手。
 
-## ビルド方法
+## ビルドと起動
 
 ```bash
-# HAL Plugin (コンパイル確認のみ。インストール手順は上記ロードマップ参照)
-cd HALPlugin && make
-
-# SwiftUI アプリ
-cd VisualizerApp && swift build
-# 実行: swift run VisualizerApp
+./build_app.sh   # HAL ドライバ + dist/VAIControl.app + dist/VirtualAudioVisualizer.app
+open dist/VAIControl.app
+open dist/VirtualAudioVisualizer.app --args "$PWD/Examples/ring-8.sscene"
 ```
+
+`swift run` で実行ファイルを直接起動すると SwiftUI がウィンドウを作らないため、
+必ず `.app` から起動する。ヘッドレス確認は `dist/VAIControl.app/Contents/MacOS/VAIControl --status`、
+`make -C Tools check`(SSD 軸変換と共有メモリ読み出し)。
+
+## VAIControl (ドライバ ON/OFF)
+
+| 操作 | 実行内容 (管理者権限) | 完了判定 |
+|---|---|---|
+| ON | 同梱ドライバを `/Library/Audio/Plug-Ins/HAL/` へコピー → `killall coreaudiod` | バンドル配置 + ヘルパープロセス存在 + CoreAudio にデバイス UID 登録 |
+| OFF | バンドル削除 → `killall coreaudiod` | バンドルなし + ヘルパープロセスなし + デバイスなし。15 秒以内に消えないヘルパーは PID 指定で `kill -9` |
+
+- HAL プラグインは coreaudiod 配下の専用プロセス `Core Audio Driver (VirtualAudioInterfaceDriver.driver)` で動く。
+  このプロセスだけ kill しても coreaudiod が再起動し得るため、バンドル削除 + coreaudiod 再起動で止める。
+- coreaudiod 再起動中は **他のオーディオデバイスも一瞬途切れる**。本番中の切り替えは避ける。
+- `HALPlugin/install.sh` は開発用(ビルド直後のドライバを直接インストール)。
 
 ## 参照
 
