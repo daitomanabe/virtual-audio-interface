@@ -21,6 +21,7 @@
 #include <dispatch/dispatch.h>
 #include <mach/mach_time.h>
 #include <pthread.h>
+#include <algorithm>
 #include <atomic>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -67,6 +68,12 @@ struct MeterPublisher {
     VAIMeterShm *shm = nullptr;
     int fd = -1;
 
+    // Driver-side ballistics state (previous IO cycle's values), kept out of
+    // shm since only this struct ever reads or writes it. Indexed by
+    // channel; IO thread only, fixed size, no malloc.
+    float peakState[VAI_MAX_CHANNELS] = {};
+    float meanSqState[VAI_MAX_CHANNELS] = {};
+
     void open(UInt32 initialChannelCount, Float64 initialSampleRate, UInt32 zeroTimeStampPeriod) {
         fd = shm_open(VAI_SHM_NAME, O_CREAT | O_RDWR, 0666);
         if (fd < 0) return;
@@ -80,18 +87,46 @@ struct MeterPublisher {
         shm->sampleRate = initialSampleRate;
         shm->zeroTimeStampPeriod = zeroTimeStampPeriod;
         shm->updateCounter = 0;
+        resetState();
+    }
+
+    // Channel count just changed: the old ballistics state no longer
+    // corresponds to the new channel mapping, so drop it. Not synchronized
+    // with publish() below (both only ever run near-serially around a
+    // config change, and worst case is one meter frame briefly resetting —
+    // same tolerance the rest of this struct already assumes for shm reads).
+    void resetState() {
+        memset(peakState, 0, sizeof(peakState));
+        memset(meanSqState, 0, sizeof(meanSqState));
     }
 
     // interleaved: Float32[frames * channels], HAL-mixed output (WriteMix).
-    void publish(const Float32 *interleaved, UInt32 frames, UInt32 channels) {
+    // IO thread only: no malloc, no locks, no logging.
+    void publish(const Float32 *interleaved, UInt32 frames, UInt32 channels, Float64 sampleRate) {
         if (!shm) return;
+        float decay = vai_peak_decay_factor(frames, sampleRate);
+        float alpha = vai_rms_alpha(frames, sampleRate);
         for (UInt32 ch = 0; ch < channels && ch < VAI_MAX_CHANNELS; ++ch) {
             float peak = 0.f;
+            double sumSq = 0.0;
+            bool clipped = false;
             for (UInt32 f = 0; f < frames; ++f) {
-                float v = std::fabs(interleaved[f * channels + ch]);
-                if (v > peak) peak = v;
+                float v = interleaved[f * channels + ch];
+                float av = std::fabs(v);
+                if (av > peak) peak = av;
+                sumSq += static_cast<double>(v) * static_cast<double>(v);
+                if (av >= 1.0f) clipped = true;
             }
-            shm->peakLevel[ch] = peak;
+            float meanSq = frames > 0 ? static_cast<float>(sumSq / frames) : 0.f;
+
+            float newPeak = std::max(peak, peakState[ch] * decay);
+            peakState[ch] = newPeak;
+            float newMeanSq = meanSqState[ch] + alpha * (meanSq - meanSqState[ch]);
+            meanSqState[ch] = newMeanSq;
+
+            shm->peakLevel[ch] = newPeak;
+            shm->rmsLevel[ch] = std::sqrt(std::max(newMeanSq, 0.f));
+            if (clipped) shm->clipCount[ch]++;
         }
         shm->updateCounter++;
     }
@@ -104,7 +139,11 @@ MeterPublisher gMeter;
 // touched from both the HAL's IO thread and property get/set calls.
 pthread_mutex_t gStateMutex = PTHREAD_MUTEX_INITIALIZER;
 
-Float64 gSampleRate = kDefaultSampleRate;
+// atomic: publish() now reads this lock-free from the IO thread (ballistics
+// decay/alpha depend on sample rate), same rationale as gChannelCount below.
+// All existing gStateMutex-guarded call sites are unchanged: std::atomic<T>
+// converts to/from T implicitly, so this is a drop-in type swap.
+std::atomic<Float64> gSampleRate{kDefaultSampleRate};
 std::atomic<UInt32> gChannelCount{kDefaultChannelCount}; // atomic: read lock-free on the IO thread
 UInt64 gZeroTimeSeed = 1;
 bool gDeviceIsRunning = false;
@@ -246,12 +285,17 @@ OSStatus Plugin_PerformDeviceConfigurationChange(AudioServerPlugInDriverRef, Aud
     UInt32 newChannels = gPendingChannelCount;
     bool rateOk = SampleRateSupported(newRate);
     bool channelsOk = (newChannels >= 1 && newChannels <= VAI_MAX_CHANNELS);
+    bool channelsChanged = channelsOk && newChannels != gChannelCount;
     if (rateOk) gSampleRate = newRate;
     if (channelsOk) gChannelCount = newChannels;
     RecomputeTicksPerPeriod();
     gZeroTimeSeed++;
     UInt64 appliedConfigCounter = gPendingConfigCounter;
     pthread_mutex_unlock(&gStateMutex);
+
+    // Old per-channel ballistics state no longer maps to the new channel
+    // layout — drop it so a channel doesn't inherit a stale peak/rms.
+    if (channelsChanged) gMeter.resetState();
 
     if (gMeter.shm) {
         gMeter.shm->channelCount = gChannelCount;
@@ -944,7 +988,7 @@ OSStatus Plugin_DoIOOperation(AudioServerPlugInDriverRef, AudioObjectID, AudioOb
     if (!ioMainBuffer) return kAudioHardwareNoError;
     UInt32 channels = gChannelCount.load(std::memory_order_relaxed);
     const Float32 *samples = static_cast<const Float32 *>(ioMainBuffer);
-    gMeter.publish(samples, inIOBufferFrameSize, channels);
+    gMeter.publish(samples, inIOBufferFrameSize, channels, gSampleRate);
     return kAudioHardwareNoError;
 }
 

@@ -12,12 +12,12 @@ Ableton Live 等から仮想オーディオデバイスとして接続し、受�
         │ (Core Audio, 128ch out)
         ▼
 ┌─────────────────────────────┐        POSIX共有メモリ         ┌───────────────────────────┐
-│ HALPlugin (別プロセス:        │  /vai_meter_v1 (mmap, 読専)   │ VisualizerApp (SwiftUI)    │
+│ HALPlugin (別プロセス:        │  /vai_meter_v3 (mmap)         │ VisualizerApp (SwiftUI)    │
 │ coreaudiod にロードされる)     │ ───────────────────────────▶ │                            │
 │  AudioServerPlugIn.h の      │  VAIMeterShm{ channelCount,   │  AudioLevelsModel          │
-│  COM風インターフェースを実装   │    peakLevel[128] }           │   30Hzポーリングで読み出し   │
-│  ・仮想入力デバイスとして登録   │                                │  LevelMeterGridView        │
-│  ・IOProcでオーディオ受信      │                                │   128ch グリッドメーター    │
+│  COM風インターフェースを実装   │    peakLevel/rmsLevel[128],   │   60Hzポーリングで読み出し   │
+│  ・仮想入力デバイスとして登録   │    clipCount[128] }           │  LevelMeterGridView        │
+│  ・IOProcでオーディオ受信      │                                │   128ch dBFSメーター       │
 │  ・チャンネル毎にabs peak計算  │                                │  SpeakerSceneView          │
 │  →共有メモリへ書き込み         │                                │   SceneKit + SSD反映        │
 └─────────────────────────────┘                                └─────────────┬──────────────┘
@@ -47,6 +47,16 @@ Ableton Live 等から仮想オーディオデバイスとして接続し、受�
   実用上問題にならないため、ロックのコストを避けた
   (ponytail: 将来レベル値以外の重要データを載せるなら再検討する)。
 
+`peakLevel[128]` は IO サイクル(数ms)ごとの生ピークではなく、ドライバ側で
+バリスティクスをかけた値(`peak = max(bufferPeak, peak * decay)`、-20dB/1.5秒)。
+30〜60Hzでポーリングするアプリ側がトランジェントを取りこぼさないための処置で、
+生ピークのまま渡すと短いスパイクがポーリングの間に上書きされて消えてしまう。
+あわせて `rmsLevel[128]`(300ms時定数の指数移動平均)と `clipCount[128]`
+(|sample|>=1.0 を含んだIOバッファ数の累積、ドライバのみが書き込み・リセットしない)
+を追加した(`/vai_meter_v3`)。計算式は `Shared/MeterShm.h` の
+`vai_peak_decay_factor` / `vai_rms_alpha` に集約し、`Tools/selfcheck.cpp` から
+同じ関数を呼んで数値を検算している。
+
 ### 座標系変換 (SSD → SceneKit)
 
 SSD は右手系・+Z-up・メートル単位。SceneKit は右手系・+Y-up。
@@ -57,7 +67,7 @@ SSD は右手系・+Z-up・メートル単位。SceneKit は右手系・+Y-up。
 
 ## 設定可能パラメータ / ホスト決定パラメータ
 
-VisualizerApp の Settings タブから、共有メモリ (`Shared/MeterShm.h` v2) 経由で
+VisualizerApp の Settings タブから、共有メモリ (`Shared/MeterShm.h` v3) 経由で
 HAL Plugin に設定を要求できる。HAL Plugin 側は `Plugin_Initialize` で起動する
 200ms 周期の `dispatch_source_t` タイマーが shm の `configCounter` を監視し、
 変化していれば `requestedChannelCount` / `requestedSampleRate` を検証した上で
@@ -119,9 +129,9 @@ virtual-audio-interface/
         └── VisualizerApp/     # SwiftUI 本体
             ├── App.swift
             ├── ContentView.swift
-            ├── AudioLevelsModel.swift   # 30Hzポーリングで共有メモリを読む
+            ├── AudioLevelsModel.swift   # 60Hzポーリングで共有メモリを読む
             ├── SSDSceneModel.swift      # .sscene ロード
-            ├── LevelMeterGridView.swift # 128ch バーメーター (有効チャンネル数以外は減光)
+            ├── LevelMeterGridView.swift # 128ch dBFSメーター (Canvas一枚描画、有効チャンネル数以外は減光)
             ├── SettingsView.swift       # チャンネル数/サンプルレート設定 + ホスト決定値表示
             └── SpeakerSceneView.swift   # SceneKit 3D表示 + レベル反映
 ```

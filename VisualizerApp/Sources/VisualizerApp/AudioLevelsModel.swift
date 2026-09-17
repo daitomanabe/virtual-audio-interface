@@ -17,20 +17,42 @@ struct DriverStatus {
     var available: Bool = false
 }
 
-/// Polls the HAL plugin's shared-memory meter struct at ~30Hz.
+/// Polls the HAL plugin's shared-memory meter struct at ~60Hz.
 /// ponytail: polling instead of a push/notify mechanism (e.g. Mach port
-/// signal) — simplest thing that works for a meter; revisit only if 30Hz
+/// signal) — simplest thing that works for a meter; revisit only if 60Hz
 /// polling shows up as real CPU cost.
 @MainActor
 final class AudioLevelsModel: ObservableObject {
     static let channelCount = 128
+    /// Driver-side ballistics peak, linear 0...1(+). The driver already
+    /// applies peak-hold decay (see Shared/MeterShm.h vai_peak_decay_factor),
+    /// so this is used as-is — no second decay layer on top.
     @Published var levels: [Float] = Array(repeating: 0, count: channelCount)
     @Published var status = DriverStatus()
 
+    /// dBFS views of the same data, floor at -120dB.
+    @Published var peakDB: [Float] = Array(repeating: AudioLevelsModel.dbFloor, count: channelCount)
+    @Published var rmsDB: [Float] = Array(repeating: AudioLevelsModel.dbFloor, count: channelCount)
+    /// Peak-hold: holds the loudest recent peakDB for holdTime, then falls at
+    /// holdFallRatePerSec. Computed here (app-side) since it's a UI/display
+    /// concern, not something other consumers of `levels` need.
+    @Published var holdDB: [Float] = Array(repeating: AudioLevelsModel.dbFloor, count: channelCount)
+    /// 1-based channel numbers that clipped (|sample| >= 1.0) since the last
+    /// resetClips(). Latched until reset.
+    @Published var clipped: Set<Int> = []
+
+    static let dbFloor: Float = -120
+    static let signalThresholdDB: Float = -60
+    private static let holdTime: Float = 1.5
+    private static let holdFallRatePerSec: Float = 20
+
     private var timer: Timer?
+    private var holdTimer: [Float] = Array(repeating: 0, count: channelCount)
+    private var clipBaseline: [UInt32] = Array(repeating: 0, count: channelCount)
+    private var lastClipCounts: [UInt32] = Array(repeating: 0, count: channelCount)
 
     init() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
     }
@@ -40,22 +62,53 @@ final class AudioLevelsModel: ObservableObject {
         abrClose()
     }
 
-    // ponytail: fixed decay constant, tune if 30Hz feels too slow/fast to
-    // read; per-channel-configurable decay would be premature here.
-    private let decay: Float = 0.85
+    private static func linearToDB(_ v: Float) -> Float {
+        guard v > 0 else { return dbFloor }
+        return max(20 * log10f(v), dbFloor)
+    }
 
     private func tick() {
-        var buffer = [Float](repeating: 0, count: Self.channelCount)
-        let n = buffer.withUnsafeMutableBufferPointer { ptr -> UInt32 in
-            abrReadLevels(ptr.baseAddress, UInt32(Self.channelCount))
+        var peakBuf = [Float](repeating: 0, count: Self.channelCount)
+        var rmsBuf = [Float](repeating: 0, count: Self.channelCount)
+        var clipBuf = [UInt32](repeating: 0, count: Self.channelCount)
+        let n: UInt32 = peakBuf.withUnsafeMutableBufferPointer { peakPtr in
+            rmsBuf.withUnsafeMutableBufferPointer { rmsPtr in
+                clipBuf.withUnsafeMutableBufferPointer { clipPtr in
+                    abrReadMeters(peakPtr.baseAddress, rmsPtr.baseAddress, clipPtr.baseAddress, UInt32(Self.channelCount))
+                }
+            }
         }
         if n > 0 {
-            // Shared memory is overwritten every IO cycle (~ms), so a raw
-            // 30Hz poll misses transients between polls. Peak-hold + decay
-            // so a brief spike stays visible.
-            for i in 0..<Self.channelCount {
-                levels[i] = max(buffer[i], levels[i] * decay)
+            levels = peakBuf
+            var newPeakDB = peakDB
+            var newRmsDB = rmsDB
+            var newHoldDB = holdDB
+            let dt = Float(1.0 / 60.0)
+            for i in 0..<Int(n) {
+                let db = Self.linearToDB(peakBuf[i])
+                newPeakDB[i] = db
+                newRmsDB[i] = Self.linearToDB(rmsBuf[i])
+
+                if db >= newHoldDB[i] {
+                    newHoldDB[i] = db
+                    holdTimer[i] = 0
+                } else {
+                    holdTimer[i] += dt
+                    if holdTimer[i] > Self.holdTime {
+                        newHoldDB[i] = max(db, newHoldDB[i] - Self.holdFallRatePerSec * dt)
+                    }
+                }
             }
+            peakDB = newPeakDB
+            rmsDB = newRmsDB
+            holdDB = newHoldDB
+
+            var newClipped = clipped
+            for i in 0..<Int(n) where clipBuf[i] != clipBaseline[i] {
+                newClipped.insert(i + 1)
+            }
+            if newClipped != clipped { clipped = newClipped }
+            lastClipCounts = clipBuf
         }
 
         var raw = VAIStatus()
@@ -83,5 +136,13 @@ final class AudioLevelsModel: ObservableObject {
     /// poll timer (~200ms) — see status.configAppliedCounter vs configCounter.
     func requestConfig(channelCount: Int?, sampleRate: Double?) {
         _ = abrWriteConfig(UInt32(channelCount ?? 0), sampleRate ?? 0)
+    }
+
+    /// Snapshots the current cumulative clip counts as the new baseline and
+    /// clears the latched `clipped` set. The driver never resets clipCount
+    /// itself (single-writer discipline), so "reset" is purely app-side.
+    func resetClips() {
+        clipBaseline = lastClipCounts
+        clipped = []
     }
 }
