@@ -5,6 +5,11 @@ import AppKit
 enum Main {
     @MainActor static func main() {
         let args = Array(CommandLine.arguments.dropFirst())
+        if args.contains("--status") {
+            let s = DriverController.probe()
+            print("installed=\(s.installed) helperPIDs=\(s.helperPIDs) devicePresent=\(s.devicePresent) on=\(s.isOn) off=\(s.isOff)")
+            exit(0)
+        }
         if let i = args.firstIndex(of: "--docshot") {
             guard i + 1 < args.count else {
                 print("usage: VisualizerApp --docshot <outdir> [scene.sscene]")
