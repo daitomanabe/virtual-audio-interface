@@ -4,7 +4,10 @@
 SDK := $(shell find /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs /Library/Developer/CommandLineTools/SDKs -maxdepth 1 -iname 'MacOSX*.sdk' 2>/dev/null | sort -V | tail -1)
 BUNDLE := build/VirtualAudioInterfaceDriver.driver
 CXX := clang++
-CXXFLAGS := -std=c++17 -Wall -Wextra -fPIC -isysroot $(SDK) -mmacosx-version-min=13.0
+# Universal by default (arm64 + x86_64). Override with `make ARCHS="-arch arm64"`
+# for a single-arch build if the toolchain can't link one of the slices.
+ARCHS ?= -arch arm64 -arch x86_64
+CXXFLAGS := -std=c++17 -Wall -Wextra -fPIC $(ARCHS) -isysroot $(SDK) -mmacosx-version-min=13.0
 FRAMEWORKS := -framework CoreFoundation -framework CoreAudio -bundle
 
 .PHONY: all clean check-sdk
