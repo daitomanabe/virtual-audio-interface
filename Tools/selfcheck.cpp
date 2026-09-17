@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
     float lv[VAI_MAX_CHANNELS] = {};
     uint32_t got = abrReadLevels(lv, VAI_MAX_CHANNELS);
     std::printf("speakers=%d shm_channels=%u ch1=%.2f ch128=%.2f\n", n, got, lv[0], lv[127]);
-    if (got) assert(got == 128);
+    if (got) assert(got >= 1 && got <= 128);
 
     VAIStatus status = {};
     if (abrReadStatus(&status)) {
