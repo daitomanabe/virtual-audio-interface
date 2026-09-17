@@ -2,9 +2,9 @@ SDK := $(shell xcrun --show-sdk-path)
 SSDB := ../VisualizerApp/Sources/SSDBridge
 check: selfcheck fake_meter ssdcheck
 	cd $(CURDIR) && ./selfcheck && ./ssdcheck
-selfcheck: selfcheck.cpp $(SSDB)/ssd_bridge.cpp ../VisualizerApp/Sources/AudioBridge/audio_bridge.c
-	clang++ -std=c++17 -O1 -I$(SSDB)/include -I../VisualizerApp/Sources/AudioBridge/include -o $@ $^
-ssdcheck: ssdcheck.cpp $(SSDB)/ssd_bridge.cpp $(SSDB)/include/ssd_bridge.h
+selfcheck: selfcheck.cpp $(SSDB)/ssd_bridge.cpp $(SSDB)/ssd_reader.h ../VisualizerApp/Sources/AudioBridge/audio_bridge.c
+	clang++ -std=c++17 -O1 -I$(SSDB)/include -I../VisualizerApp/Sources/AudioBridge/include -o $@ $(filter-out %.h,$^)
+ssdcheck: ssdcheck.cpp $(SSDB)/ssd_bridge.cpp $(SSDB)/ssd_reader.h $(SSDB)/include/ssd_bridge.h
 	clang++ -std=c++17 -O1 -Wall -I$(SSDB)/include -o $@ ssdcheck.cpp $(SSDB)/ssd_bridge.cpp
 fake_meter: fake_meter.c
 	clang -o $@ $<
