@@ -1,270 +1,204 @@
-# virtual-audio-interface
+# Virtual Audio Interface
 
-macOS向け「仮想オーディオインターフェース + スピーカー3D可視化アプリ」。
-Ableton Live 等から仮想オーディオデバイスとして接続し、受信した信号を
-チャンネル別レベルメーターと、.sscene (SSD) で定義したスピーカーの3D配置に
-重ねて可視化する。
+A 128-channel virtual audio interface for macOS with a built-in visualizer for spatial audio debugging.
+Your DAW sees it as an ordinary output device; the app shows what arrives on every channel and which
+speaker of your layout (`.sscene`) it would come out of.
 
-## アーキテクチャ
+[日本語 README](README.ja.md)
 
-```
- Ableton Live などの DAW
-        │ (Core Audio, 128ch out)
-        ▼
-┌─────────────────────────────┐        POSIX共有メモリ         ┌───────────────────────────┐
-│ HALPlugin (別プロセス:        │  /vai_meter_v3 (mmap)         │ VisualizerApp (SwiftUI)    │
-│ coreaudiod にロードされる)     │ ───────────────────────────▶ │                            │
-│  AudioServerPlugIn.h の      │  VAIMeterShm{ channelCount,   │  AudioLevelsModel          │
-│  COM風インターフェースを実装   │    peakLevel/rmsLevel[128],   │   60Hzポーリングで読み出し   │
-│  ・仮想入力デバイスとして登録   │    clipCount[128] }           │  LevelMeterGridView        │
-│  ・IOProcでオーディオ受信      │                                │   128ch dBFSメーター       │
-│  ・チャンネル毎にabs peak計算  │                                │  SpeakerSceneView          │
-│  →共有メモリへ書き込み         │                                │   SceneKit + SSD反映        │
-└─────────────────────────────┘                                └─────────────┬──────────────┘
-                                                                                │
-                                                                        .sscene ファイル
-                                                                                ▼
-                                                                     SSDBridge (C++/Cブリッジ)
-                                                                       ssd::Scene (Scene.h を
-                                                                       vendoring・ラップ)
-                                                                       SPEAKER Channel→World座標
-```
+![Monitor tab: speaker layout from a .sscene file with live levels and routing warnings](docs/images/monitor-top.png)
 
-### プロセス間通信の設計判断: 共有メモリ vs XPC
+## Why
 
-**共有メモリ (POSIX shm, `shm_open`/`mmap`) を採用した。** 判断理由:
+Debugging a spatial audio setup usually means sitting in front of the actual speaker system: is channel 17
+really the ceiling speaker, did the panner send anything to a muted speaker, is a bus accidentally routed
+to a channel nobody listens to? Virtual Audio Interface lets you do that check anywhere. It shows up in
+Ableton Live (or any Core Audio app) as a real audio interface, so the signal chain stays exactly as it
+will be on site, and the app visualizes the result: per-channel meters, the speaker layout in 3D with
+the sounding speakers lit up, and warnings for routing mistakes.
 
-- HAL Plugin は `coreaudiod` にロードされる別プロセスであり、そこから
-  App へ**継続的に**(理想は各 IOProc サイクル毎に)128ch分のレベル値を
-  送る必要がある。XPC はメッセージ単位のオーバーヘッドが大きく、
-  リアルタイムオーディオコールバック内から呼ぶには不向き。
-- 今回送るデータは「128ch分の peak float 配列」という固定サイズ・
-  高頻度更新のデータであり、まさに共有メモリが得意とする形。
-  XPCは将来「デバイス選択・ゲイン設定などの低頻度コマンド」を
-  App→HALPlugin 方向に送る用途に使うのが自然(未実装、ロードマップ参照)。
-- 排他ロックなしの単一ライター/複数リーダー構成にした
-  (`Shared/MeterShm.h` 参照)。メーター用途であれば稀な torn read は
-  実用上問題にならないため、ロックのコストを避けた
-  (ponytail: 将来レベル値以外の重要データを載せるなら再検討する)。
+## Features
 
-`peakLevel[128]` は IO サイクル(数ms)ごとの生ピークではなく、ドライバ側で
-バリスティクスをかけた値(`peak = max(bufferPeak, peak * decay)`、-20dB/1.5秒)。
-30〜60Hzでポーリングするアプリ側がトランジェントを取りこぼさないための処置で、
-生ピークのまま渡すと短いスパイクがポーリングの間に上書きされて消えてしまう。
-あわせて `rmsLevel[128]`(300ms時定数の指数移動平均)と `clipCount[128]`
-(|sample|>=1.0 を含んだIOバッファ数の累積、ドライバのみが書き込み・リセットしない)
-を追加した(`/vai_meter_v3`)。計算式は `Shared/MeterShm.h` の
-`vai_peak_decay_factor` / `vai_rms_alpha` に集約し、`Tools/selfcheck.cpp` から
-同じ関数を呼んで数値を検算している。
+- **Virtual output device** — up to 128 channels, 44.1 / 48 / 88.2 / 96 kHz, implemented as a Core Audio
+  HAL plug-in (AudioServerPlugIn). Channel count and sample rate can be changed from the app.
+- **Meters** — dBFS meters for every channel with RMS, peak, peak hold and latched clip indicators.
+  Channels that carry signal but have no speaker in the loaded layout are marked *unassigned*.
+- **Monitor** — loads an SSD (`.sscene`) speaker layout and shows it as a plan view, front/side
+  elevations or a free 3D view. Speakers light up by level; optional lines from the listener show what is
+  sounding right now. Click a speaker to select it everywhere.
+- **Routing checks** — signal on an unassigned channel, speakers beyond the device's channel count,
+  signal on muted or disabled speakers, channels shared by several speakers, parser warnings.
+- **Host-decided values** — IO buffer size, running state, client count and the sample rate the DAW asked
+  for, so you can see what the host actually negotiated.
+- **Driver ON / OFF / Update** from the app, with verification that the driver process is really gone
+  when turned off.
 
-### 座標系変換 (SSD → SceneKit)
-
-SSD は右手系・+Z-up・メートル単位。SceneKit は右手系・+Y-up。
-`Scene.h` が openFrameworks 向けに例示する変換 `(x, y, z) → (x, z, -y)` は
-「+Z-up → +Y-up」の回転であり、SceneKit も同じ右手系+Y-upなので
-**同じ変換式がそのまま使える**。変換は `ssdb_to_scenekit`(`SSDBridge/ssd_bridge.cpp`)
-1 か所だけにあり、ブリッジは SSD 座標の生値を返し、アプリは点・向きをすべてこの関数に通す。
-
-## 設定可能パラメータ / ホスト決定パラメータ
-
-VisualizerApp の Settings タブから、共有メモリ (`Shared/MeterShm.h` v3) 経由で
-HAL Plugin に設定を要求できる。HAL Plugin 側は `Plugin_Initialize` で起動する
-200ms 周期の `dispatch_source_t` タイマーが shm の `configCounter` を監視し、
-変化していれば `requestedChannelCount` / `requestedSampleRate` を検証した上で
-`RequestDeviceConfigurationChange` → `Plugin_PerformDeviceConfigurationChange`
-経由で適用する(IO スレッドからは直接呼ばない)。
-
-| パラメータ | 設定元 | 範囲 | shm フィールド |
-|---|---|---|---|
-| チャンネル数 | アプリ (Settings タブ) | 1〜128 | `requestedChannelCount` → `channelCount` |
-| サンプルレート | アプリ (Settings タブ) | 44100 / 48000 / 88200 / 96000 Hz | `requestedSampleRate` → `sampleRate` |
-
-**IO バッファサイズは HAL クライアント(DAW)が決めるため、plugin 側からは設定できない。**
-`Plugin_DoIOOperation` に渡される `inIOBufferFrameSize` を読み取って可視化するのみ。
-
-| ホスト決定値 (読み取り専用) | shm フィールド | 更新元 |
-|---|---|---|
-| 実際の IO バッファフレーム数 | `ioBufferFrameSize` | `Plugin_DoIOOperation` |
-| 実際に有効なサンプルレート | `sampleRate` | `Plugin_PerformDeviceConfigurationChange` |
-| Running 状態 | `isRunning` | `Plugin_StartIO` / `Plugin_StopIO` |
-| 接続クライアント数 | `clientCount` | `Plugin_AddDeviceClient` / `Plugin_RemoveDeviceClient` |
-| ZeroTimeStampPeriod | `zeroTimeStampPeriod` | `Plugin_Initialize` (固定値を publish) |
-| 最後に DAW から要求されたサンプルレート | `hostRequestedSampleRate` | `Plugin_SetPropertyData` |
-| 設定適用済みか | `configAppliedCounter` == `configCounter` | `Plugin_PerformDeviceConfigurationChange` / poll timer |
-
-設定変更の適用経路は HAL 標準のプロトコルに統一されている:
-`RequestDeviceConfigurationChange` の `inChangeAction` は常に「pending 設定を適用せよ」
-を意味する定数 (`kApplyPendingConfigAction`) のみを運び、実際の新レート/新チャンネル数は
-`gPendingSampleRate` / `gPendingChannelCount` (mutex 保護のグローバル変数) 経由で渡す。
-適用後は `kAudioStreamPropertyVirtualFormat` / `PhysicalFormat` と、デバイスの
-`kAudioDevicePropertyNominalSampleRate` / `kAudioDevicePropertyPreferredChannelLayout` の
-変更を `PropertiesChanged` で通知し、HAL / DAW 側がストリームフォーマット変更を認識できるようにしている。
-
-**注意: shm の config 領域(app → driver)はロックなしで、同一マシン内であれば
-任意のプロセスから書き込める。** ローカルユーザーのみが信頼される前提であり、
-リモート/マルチユーザー環境での保護は行っていない(ローカル単一ユーザー利用前提)。
-
-## ディレクトリ構成
-
-```
-virtual-audio-interface/
-├── Shared/
-│   └── MeterShm.h            # HALPlugin・App 共通の共有メモリ構造体定義
-├── HALPlugin/                # Core Audio AudioServerPlugIn (HAL Plugin) 本体
-│   ├── src/VirtualAudioDevicePlugin.cpp
-│   ├── Info.plist
-│   └── Makefile               # clang++ で .driver バンドルをビルド
-└── VisualizerApp/             # Swift Package (SwiftUI アプリ)
-    ├── Package.swift
-    └── Sources/
-        ├── SSDBridge/         # Scene.h を vendoring した C++/Cブリッジ
-        │   ├── ssd_bridge.cpp
-        │   └── include/
-        │       ├── ssd_bridge.h
-        │       ├── module.modulemap   # Scene.h をSwift側へ露出させない
-        │       └── ssd/Scene.h        # spatial-audio-kit-and-ssd-v4 からコピー
-        ├── AudioBridge/       # 共有メモリ読み出し (C)
-        │   ├── audio_bridge.c
-        │   └── include/{audio_bridge.h, MeterShm.h}
-        └── VisualizerApp/     # SwiftUI 本体
-            ├── App.swift
-            ├── ContentView.swift        # トップバー (Open/Reload + ドライバ状態表示) + タブ
-            ├── DriverController.swift   # ドライバ ON/OFF・状態プローブ (--status CLI も App.swift から利用)
-            ├── AudioLevelsModel.swift   # 60Hzポーリングで共有メモリを読む
-            ├── SSDSceneModel.swift      # .sscene ロード
-            ├── LevelMeterGridView.swift # 128ch dBFSメーター (Canvas一枚描画、有効チャンネル数以外は減光)
-            ├── SettingsView.swift       # ドライバ状態 + チャンネル数/サンプルレート設定 + ホスト決定値表示
-            ├── SpeakerSceneView.swift   # SceneKit 3D/平面表示 + レベル反映 + クリック選択
-            ├── RoutingPanel.swift       # シーン情報・ルーティング警告・スピーカー一覧
-            └── LevelStyle.swift         # dBFS 変換と色 (3D と一覧で共用)
-```
-
-## 実装ロードマップ
-
-### 完了 (このセッション)
-- [x] プロジェクト構成・アーキテクチャ設計
-- [x] HAL Plugin 128ch実装 (Output ストリーム、`WriteMix` からのpeak計算、
-      共有メモリへの publish、clang++でビルド確認)
-- [x] SwiftUI アプリ雛形 (128ch レベルメーターグリッド、共有メモリ読み出し、
-      peak-hold/decay ballistics)
-- [x] SSDBridge (Scene.hラップ、SPEAKER Channel→World座標、SceneKit軸変換)
-- [x] SceneKitでのスピーカー3D表示 + レベルに応じた発光・拡大
-      (.sscene 再ロード時のシーン再構築込み)
-- [x] `swift build` / `make` (HALPlugin) の両方でビルド確認済み
-
-### Output ストリーム化 (このセッション)
-DAW (Ableton Live 等) は仮想デバイスに対して**出力**するため、ストリーム方向を
-Output (`kAudioStreamPropertyDirection` = 0) に変更した。`Plugin_DoIOOperation`
-は `kAudioServerPlugInIOOperationWriteMix` を処理し、HALが混合(ダウンミック
-ス済み)した `ioMainBuffer` から直接チャンネル別 abs peak を計算する
-(旧 `ReadInput` 経路・中間コピー用リングバッファは削除)。`Plugin_GetZeroTimeStamp`
-も `mach_absolute_time` + `mach_timebase_info` でHALクロックを正しく進めるように
-実装した。
-
-### 可変サンプルレート対応 (このセッション)
-`kAudioDevicePropertyNominalSampleRate` を 44100/48000/88200/96000 Hz で
-setting 可能にした。設定要求は `RequestDeviceConfigurationChange` →
-`Plugin_PerformDeviceConfigurationChange` を経由し、実際のレート切り替え
-(`gSampleRate` 更新・ゼロタイムスタンプの周期再計算)はそこで行う
-(`gStateMutex` で保護)。`kAudioStreamPropertyVirtualFormat` /
-`AvailableNominalSampleRates` もこの4レートを反映する。
-
-### チャンネル数・サンプルレートのアプリ設定化 (このセッション)
-shm を v2 レイアウト (`/vai_meter_v2`) に更新し、driver→app のステータス半分
-(IOバッファフレーム数・Running・クライアント数・ZeroTimeStampPeriod・ホスト要求
-レート) と app→driver の設定半分 (requestedChannelCount/requestedSampleRate +
-configCounter) を追加。HAL Plugin は 200ms 周期のポーリングタイマーで設定要求を
-検知し、`RequestDeviceConfigurationChange` の標準プロトコルに統一して適用する
-(詳細は上の「設定可能パラメータ / ホスト決定パラメータ」参照)。VisualizerApp
-には Settings タブを追加した。
-
-### 未実装・残課題
-- [ ] **実機インストール手順の整備 (未検証)**: `.driver` バンドルを
-      `/Library/Audio/Plug-Ins/HAL/` に配置し、コード署名 or SIP無効化、
-      `sudo killall coreaudiod` で再読込する手順のドキュメント化と検証。
-      本セッションではコンパイル確認までで、実機インストールは未検証。
-- [ ] **XPC (低頻度コマンド経路)**: App→HALPluginへのミュート/ゲイン設定
-      などの制御コマンド送信。共有メモリと役割分担する設計。
-- [ ] **HAL Plugin側のプロパティ実装の充実**: 現状は読み取り専用の
-      最小プロパティセットのみ。ミュート/ボリュームコントロール、
-      複数クライアント対応、実際のストリームフォーマット変更通知等。
-- [ ] **共有メモリの堅牢化**: HALPluginが未起動/クラッシュした場合の
-      Appの復帰、shmセグメントの権限・サンドボックス対応。
-- [x] **SceneKit UI改善**: カメラプリセット・自動フレーミング、Ch/名前ラベル、
-      Mute/Enabled の表現、ルーティング警告 (下の「Monitor タブ」)。
-- [ ] Gain/Delay の可視化への反映 (現状は一覧に数値表示のみ)。
-- [ ] **配布**: コード署名・notarization・インストーラ(pkg)化は未着手。
-
-## ビルドと起動
-
-```bash
-./build_app.sh   # HAL ドライバ + dist/VirtualAudioInterface.app
-open dist/VirtualAudioInterface.app --args "$PWD/Examples/ring-8.sscene"
-```
-
-`swift run` で実行ファイルを直接起動すると SwiftUI がウィンドウを作らないため、
-必ず `.app` から起動する。ヘッドレス確認は `dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --status`
-(ドライバの配置/プロセス/CoreAudioデバイス状態を1行出力)、
-`make -C Tools check`(selfcheck: 共有メモリ読み出し / ssdcheck: SSDBridge の親子変換・Mute/Enabled・軸変換)。
-
-## Monitor タブ (スピーカー配置 / ルーティング検証)
-
-DAW から入った信号が SSD で意図したスピーカーから出ているかを確認する画面。
-左が 3D / 平面図、右がルーティングパネル。チャンネル選択 (1 始まり) は両者で共有する。
-
-- **開く**: Open (⌘O)、Reload (⌘R)、ウィンドウへ .sscene をドロップ。最後に開いたファイルは次回起動時に自動で開く
-  (起動引数で .sscene を渡した場合はそちらが優先)。読込エラーはパネルに赤字で表示する
-- **カメラ**: Top (正射影の平面図、画面上 = SSD +Y 前方、右 = +X)、Front (後方から +Y を見る、右 = +X)、
-  Side (+X 側から見る、右 = +Y 前方)、Perspective (マウスで回転・ズーム)。読込時にスピーカー全体に合わせる
-- **スピーカー**: 色は dBFS で -60 以下グレー → 緑 → -12 で黄 → -3 超で赤。発光と大きさもレベルに比例。
-  Mute は減光 + 赤い ×、Enabled=0 (親が無効な場合を含む) は半透明。SSD には SPEAKER の正面軸の定義がないため、
-  向きや指向性は描かない (Yaw/Pitch/Roll は親子の位置計算にだけ効く)
-- **発音ライン**: -40 dBFS を超えるスピーカーへ原点 (リスナー) から線を引く
-- **REVIEW_VOLUME**: 仕様どおり文脈用サイズとして数値表示のみ (3D には描かない)
-
-| 警告 | 条件 |
+| Meters | Settings |
 |---|---|
-| 割り当てなし (赤) | -60 dBFS を超える信号があるのに、そのチャンネルのスピーカーがない |
-| デバイス範囲外 (赤) | スピーカーのチャンネルがデバイスの有効チャンネル数を超える (ドライバ未接続時は 128 で判定) |
-| Mute / Enabled=0 に信号 (橙) | Mute または無効なスピーカーのチャンネルに -60 dBFS を超える信号 |
-| パーサー警告 (橙) | `Scene.h` の warnings (未知セクションなど) |
-| チャンネル共有 (青) | 同じチャンネルに複数スピーカー (情報) |
+| ![Meters tab](docs/images/meters.png) | ![Settings tab](docs/images/settings.png) |
 
-サンプル: `Examples/dome-24.sscene` (耳の高さ 8 + 上層 8 + 天井 4 + サブ 2 + Yaw 90° のトラスに子 2、
-Mute と Enabled=0 を含む)、`Examples/routing-errors.sscene` (警告の確認用)。
+![Monitor tab, perspective view](docs/images/monitor-perspective.png)
 
-### 自己撮影モード (--docshot)
+## Requirements
+
+- macOS 13 or later, Apple silicon or Intel (universal binaries)
+- A DAW or any app that can output to a Core Audio device
+
+## Install
+
+1. Download `VirtualAudioInterface-<version>.pkg` from [Releases](https://github.com/daitomanabe/virtual-audio-interface/releases).
+2. The package is not notarized, so macOS blocks the first attempt to open it. Open it once, then go to
+   **System Settings → Privacy & Security** and click **Open Anyway** next to the message about the package.
+   Alternatively, remove the quarantine flag in Terminal:
+   ```bash
+   xattr -d com.apple.quarantine ~/Downloads/VirtualAudioInterface-0.1.0.pkg
+   ```
+3. Run the installer. It installs
+   - `/Applications/VirtualAudioInterface.app`
+   - `/Library/Audio/Plug-Ins/HAL/VirtualAudioInterfaceDriver.driver`
+
+   and restarts `coreaudiod` to load the driver. **Every audio device on the Mac drops out for a second
+   or two** while that happens.
+
+### Uninstall
+
+Quit the app, then run [`packaging/uninstall.sh`](packaging/uninstall.sh) (also attached to each release):
 
 ```bash
-dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --docshot /tmp/vai-docshot "$PWD/Examples/dome-24.sscene"
+sudo ./uninstall.sh
 ```
 
-素の NSWindow (1400×900) に UI を載せ、Monitor の Top / Front / Side / Perspective、Meters、Settings を
-順に PNG 保存して終了する (経過は `<outdir>/docshot.log`)。Monitor は合成レベル
-(ch1 -3、ch3 -20、ch9 -50、未割り当ての ch30 -10、Mute / 無効スピーカーのチャンネル -10) で描く。
-このモードだけウィンドウを `orderFrontRegardless` で表示し、最後に開いたファイルの記録は更新しない。
+It removes the app and the driver, forgets the package receipts and restarts `coreaudiod`.
+To only unload the driver and keep the app, use **Driver OFF** in the app.
 
-## ドライバ ON/OFF
+## Quick start
 
-`DriverController`(`VisualizerApp/Sources/VisualizerApp/DriverController.swift`)がアプリ全体で
-1 つ共有され、トップバー右端の状態表示(状態ドット・Driver ON/OFF ボタン・実行中スピナー)と
-Settings タブ先頭の「ドライバ」セクション(配置・PID・CoreAudio デバイス・直近メッセージ)の
-両方から購読する。
+1. Open **Virtual Audio Interface**. The dot at the top right is green when the driver is loaded.
+2. In your DAW, select **Virtual Audio Interface (128ch)** as the output device.
+   In Ableton Live: *Settings → Audio → Audio Output Device*, then enable the channels you need in
+   *Output Config*.
+3. Open a layout with **Open…** (⌘O) or drop a `.sscene` file on the window.
+   Try [`Examples/dome-24.sscene`](Examples/dome-24.sscene).
+4. Play. The **Monitor** tab lights up the speakers that receive signal; **Meters** shows every channel.
 
-| 操作 | 実行内容 (管理者権限) | 完了判定 |
-|---|---|---|
-| ON | 同梱ドライバを `/Library/Audio/Plug-Ins/HAL/` へコピー → `killall coreaudiod` | バンドル配置 + ヘルパープロセス存在 + CoreAudio にデバイス UID 登録 |
-| OFF | バンドル削除 → `killall coreaudiod` | バンドルなし + ヘルパープロセスなし + デバイスなし。15 秒以内に消えないヘルパーは PID 指定で `kill -9` |
+The app reopens the last layout on the next launch; **Reload** (⌘R) picks up edits to the file.
 
-- HAL プラグインは coreaudiod 配下の専用プロセス `Core Audio Driver (VirtualAudioInterfaceDriver.driver)` で動く。
-  このプロセスだけ kill しても coreaudiod が再起動し得るため、バンドル削除 + coreaudiod 再起動で止める。
-- coreaudiod 再起動中は **他のオーディオデバイスも一瞬途切れる**。本番中の切り替えは避ける。
-- `HALPlugin/install.sh` は開発用(ビルド直後のドライバを直接インストール)。
-- ヘッドレス確認: `dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --status`
+## Speaker layouts (SSD / .sscene)
 
-## 参照
+Layouts use SSD (Spatial Scene Definition) v0.1, a tab-separated text format. The app reads the sections
+below; other SSD sections (screens, projectors, cameras, …) are accepted and ignored.
 
-- SSD フォーマット仕様: `spatial-audio-kit-and-ssd-v4/ssd/docs/ssd-format-ai-spec.md`
-- リファレンス実装: `spatial-audio-kit-and-ssd-v4/ssd/include/ssd/Scene.h`
-  (このリポジトリの `VisualizerApp/Sources/SSDBridge/include/ssd/Scene.h` に
-  コピーして vendoring。将来アップデートする際は手動同期が必要)
+```text
+[SCENE]
+Version	0.1
+Name	ring-8
+Unit	meter
+CoordinateSystem	SSD_RH_ZUP
+AngleUnit	degree
+
+[OBJECT]
+# ID	Type	Name	Parent	X	Y	Z	Yaw	Pitch	Roll	Enabled
+1	speaker	SP1	none	0.000	3.000	1.2	0	0	0	1
+2	speaker	SP2	none	2.121	2.121	1.2	0	0	0	1
+
+[SPEAKER]
+# ID	Channel	Gain	Delay	Mute
+1	1	0	0	0
+2	2	0	0	0
+```
+
+- Right-handed, **+X right, +Y front, +Z up**, meters and degrees.
+- `Parent` refers to another OBJECT (or `none`). World transform = parent × T(X,Y,Z) × Ry(Roll) · Rx(Pitch) · Rz(Yaw).
+  A speaker is disabled when it or any ancestor has `Enabled` 0.
+- `[SPEAKER]` maps an OBJECT of type `speaker` to a 1-based output channel; `Gain` is dB, `Delay` ms, `Mute` 0/1.
+  Several speakers may share a channel.
+- `[REVIEW_VOLUME]` (Width, Depth, Height) is shown as information only.
+- SSD does not define a speaker's forward axis, so speaker aim is not drawn.
+
+The parser ([`ssd_reader.h`](VisualizerApp/Sources/SSDBridge/ssd_reader.h)) validates the header, numbers,
+parent references and cycles, and reports errors with line numbers.
+
+### Routing warnings
+
+| Warning | When |
+|---|---|
+| Unassigned (red) | A channel above −60 dBFS has no speaker |
+| Out of range (red) | A speaker's channel exceeds the device's active channel count |
+| Muted / disabled (orange) | A muted or disabled speaker's channel carries signal |
+| Parser (orange) | Unknown sections and other parser warnings |
+| Shared channel (blue) | Several speakers use the same channel (information) |
+
+## Settings and host-decided values
+
+| Set from the app | Range |
+|---|---|
+| Channel count | 1–128 |
+| Sample rate | 44100 / 48000 / 88200 / 96000 Hz |
+
+The **IO buffer size is chosen by the host (your DAW), not the driver**, so it is displayed but not settable.
+The Settings tab also shows the effective sample rate, running state, number of clients, the rate the host
+last requested and whether a settings change has been applied.
+
+## How it works
+
+```text
+ DAW ──Core Audio (up to 128 ch)──▶ HAL plug-in ──POSIX shared memory──▶ app
+                                    (runs in coreaudiod's                 ├─ Meters
+                                     driver helper process)               ├─ Monitor ◀── .sscene
+                                                                          └─ Settings ──config──▶ plug-in
+```
+
+- The plug-in ([`VirtualAudioDevicePlugin.cpp`](HALPlugin/src/VirtualAudioDevicePlugin.cpp)) is a from-scratch
+  AudioServerPlugIn with one output device. On every IO cycle it computes per-channel peak (with decay
+  ballistics, so fast transients survive the app's 60 Hz polling), RMS and clip counts.
+- Levels and device status go through a fixed-size shared memory block ([`MeterShm.h`](Shared/MeterShm.h)).
+  The app writes channel count / sample rate requests into the same block; the plug-in applies them through
+  the regular `RequestDeviceConfigurationChange` path.
+- Turning the driver ON copies it into `/Library/Audio/Plug-Ins/HAL` and restarts `coreaudiod`; OFF removes it,
+  restarts `coreaudiod`, and confirms that the `Core Audio Driver (VirtualAudioInterfaceDriver.driver)` process
+  and the device are gone (force-killing a leftover process by PID if needed).
+
+## Build from source
+
+Command Line Tools are enough (Xcode is not required).
+
+```bash
+./build_app.sh                 # driver + dist/VirtualAudioInterface.app (universal)
+open dist/VirtualAudioInterface.app --args "$PWD/Examples/dome-24.sscene"
+packaging/build_pkg.sh         # dist/VirtualAudioInterface-<VERSION>.pkg + .sha256
+```
+
+`HALPlugin/install.sh` installs a freshly built driver directly (development shortcut).
+The version comes from [`VERSION`](VERSION); the build number is the commit count.
+
+### Tests and tools
+
+```bash
+make -C Tools check            # shared memory + meter ballistics, SSD parser and transforms
+make -C Tools harness          # drives the plug-in like coreaudiod under ASan/UBSan
+```
+
+- `dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --status` prints the driver state.
+- `... --docshot <dir> [scene.sscene]` renders every tab to PNG (used for the screenshots above).
+- `Tools/fake_meter [sweep|sine|clip]` writes synthetic levels without a DAW. It uses the same shared memory
+  as the driver, so run it only while the driver is OFF.
+
+## Project layout
+
+```text
+HALPlugin/        Core Audio HAL plug-in (C++), Makefile, dev install script
+Shared/           Shared memory layout used by the plug-in and the app
+VisualizerApp/    Swift package: SwiftUI app, AudioBridge (shared memory), SSDBridge (SSD parser)
+Tools/            Self-checks, HAL harness, fake meter source
+Examples/         Sample .sscene layouts
+packaging/        Installer (pkg) build, uninstall script
+```
+
+## Roadmap
+
+See [TODO.md](TODO.md) — UI polish, a built-in test signal generator, pass-through monitoring,
+notarization and more.
+
+## License
+
+[MIT](LICENSE) © 2026 Daito Manabe
