@@ -6,3 +6,4 @@ build/
 Tools/selfcheck
 Tools/fake_meter
 dist/
+.claude/worktrees/
