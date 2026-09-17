@@ -50,6 +50,7 @@ final class AudioLevelsModel: ObservableObject {
     private var holdTimer: [Float] = Array(repeating: 0, count: channelCount)
     private var clipBaseline: [UInt32] = Array(repeating: 0, count: channelCount)
     private var lastClipCounts: [UInt32] = Array(repeating: 0, count: channelCount)
+    private var clipBaselineSet = false
 
     init() {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
@@ -79,6 +80,11 @@ final class AudioLevelsModel: ObservableObject {
             }
         }
         if n > 0 {
+            if !clipBaselineSet {
+                // Clips counted before this app launched are not this session's news.
+                clipBaseline = clipBuf
+                clipBaselineSet = true
+            }
             levels = peakBuf
             var newPeakDB = peakDB
             var newRmsDB = rmsDB

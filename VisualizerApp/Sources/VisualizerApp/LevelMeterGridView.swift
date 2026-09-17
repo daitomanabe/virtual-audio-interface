@@ -20,10 +20,10 @@ struct LevelMeterGridView: View {
     }
 
     private static let minMeterWidth: CGFloat = 36
-    private static let rowHeight: CGFloat = 108
+    private static let rowHeight: CGFloat = 116
     private static let ledSize: CGFloat = 6
     private static let topAreaHeight: CGFloat = 16   // clip LED + "未割当"
-    private static let bottomAreaHeight: CGFloat = 24 // channel number + peak dB
+    private static let bottomAreaHeight: CGFloat = 32 // channel number + peak dB + speaker label
     private static let dbMin: Float = -60
     private static let dbMax: Float = 0
     private static let gridlines: [Float] = [0, -6, -12, -24, -48]
@@ -146,7 +146,7 @@ struct LevelMeterGridView: View {
             var p = Path()
             p.move(to: CGPoint(x: barRect.minX, y: hy))
             p.addLine(to: CGPoint(x: barRect.maxX, y: hy))
-            layer.stroke(p, with: .color(.white), lineWidth: 1.5)
+            layer.stroke(p, with: .color(.primary), lineWidth: 1.5)
         }
 
         layer.stroke(Path(barRect), with: .color(Color.secondary.opacity(0.4)), lineWidth: 0.5)
