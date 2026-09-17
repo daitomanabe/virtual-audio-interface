@@ -600,7 +600,7 @@ OSStatus Plugin_GetPropertyDataSize(AudioServerPlugInDriverRef, AudioObjectID in
     return kAudioHardwareBadObjectError;
 }
 
-OSStatus Plugin_GetPropertyData(AudioServerPlugInDriverRef, AudioObjectID inObjectID, pid_t, const AudioObjectPropertyAddress *inAddress, UInt32, const void *inQualifierData, UInt32 inDataSize, UInt32 *outDataSize, void *outData) {
+OSStatus Plugin_GetPropertyData(AudioServerPlugInDriverRef, AudioObjectID inObjectID, pid_t, const AudioObjectPropertyAddress *inAddress, UInt32 inQualifierDataSize, const void *inQualifierData, UInt32 inDataSize, UInt32 *outDataSize, void *outData) {
     if (!inAddress || !outData || !outDataSize) return kAudioHardwareIllegalOperationError;
 
     if (IsPlugInObject(inObjectID)) {
@@ -638,7 +638,9 @@ OSStatus Plugin_GetPropertyData(AudioServerPlugInDriverRef, AudioObjectID inObje
                 return kAudioHardwareNoError;
             case kAudioPlugInPropertyTranslateUIDToDevice: {
                 if (inDataSize < sizeof(AudioObjectID)) return kAudioHardwareBadPropertySizeError;
-                CFStringRef uid = static_cast<CFStringRef>(inQualifierData);
+                // The qualifier points at a CFStringRef; it is not the CFStringRef itself.
+                if (inQualifierDataSize < sizeof(CFStringRef) || !inQualifierData) return kAudioHardwareBadPropertySizeError;
+                CFStringRef uid = *static_cast<const CFStringRef *>(inQualifierData);
                 AudioObjectID result = kAudioObjectUnknown;
                 if (uid && CFEqual(uid, kDeviceUID)) result = kDeviceObjectID;
                 *static_cast<AudioObjectID *>(outData) = result;
@@ -982,7 +984,7 @@ OSStatus Plugin_WillDoIOOperation(AudioServerPlugInDriverRef, AudioObjectID, UIn
 OSStatus Plugin_BeginIOOperation(AudioServerPlugInDriverRef, AudioObjectID, UInt32, UInt32, UInt32, const AudioServerPlugInIOCycleInfo *) { return kAudioHardwareNoError; }
 OSStatus Plugin_EndIOOperation(AudioServerPlugInDriverRef, AudioObjectID, UInt32, UInt32, UInt32, const AudioServerPlugInIOCycleInfo *) { return kAudioHardwareNoError; }
 
-OSStatus Plugin_DoIOOperation(AudioServerPlugInDriverRef, AudioObjectID, AudioObjectID, UInt32 inOperationID, UInt32 inIOBufferFrameSize, UInt32, const AudioServerPlugInIOCycleInfo *, void *ioMainBuffer, void *) {
+OSStatus Plugin_DoIOOperation(AudioServerPlugInDriverRef, AudioObjectID, AudioObjectID, UInt32 /*inClientID*/, UInt32 inOperationID, UInt32 inIOBufferFrameSize, const AudioServerPlugInIOCycleInfo *, void *ioMainBuffer, void *) {
     if (gMeter.shm) gMeter.shm->ioBufferFrameSize = inIOBufferFrameSize; // host-decided, record regardless of operation
     if (inOperationID != kAudioServerPlugInIOOperationWriteMix) return kAudioHardwareNoError;
     if (!ioMainBuffer) return kAudioHardwareNoError;
