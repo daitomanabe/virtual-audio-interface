@@ -105,7 +105,7 @@ MeterPublisher gMeter;
 pthread_mutex_t gStateMutex = PTHREAD_MUTEX_INITIALIZER;
 
 Float64 gSampleRate = kDefaultSampleRate;
-UInt32 gChannelCount = kDefaultChannelCount;
+std::atomic<UInt32> gChannelCount{kDefaultChannelCount}; // atomic: read lock-free on the IO thread
 UInt64 gZeroTimeSeed = 1;
 bool gDeviceIsRunning = false;
 
@@ -290,6 +290,7 @@ void PollConfigRequests() {
     UInt64 counter = gMeter.shm->configCounter;
     if (counter == gLastSeenConfigCounter) return;
     gLastSeenConfigCounter = counter;
+    std::atomic_thread_fence(std::memory_order_acquire); // pair with app's release fence before configCounter++
 
     UInt32 reqChannels = gMeter.shm->requestedChannelCount;
     Float64 reqRate = gMeter.shm->requestedSampleRate;
@@ -941,9 +942,7 @@ OSStatus Plugin_DoIOOperation(AudioServerPlugInDriverRef, AudioObjectID, AudioOb
     if (gMeter.shm) gMeter.shm->ioBufferFrameSize = inIOBufferFrameSize; // host-decided, record regardless of operation
     if (inOperationID != kAudioServerPlugInIOOperationWriteMix) return kAudioHardwareNoError;
     if (!ioMainBuffer) return kAudioHardwareNoError;
-    pthread_mutex_lock(&gStateMutex);
-    UInt32 channels = gChannelCount;
-    pthread_mutex_unlock(&gStateMutex);
+    UInt32 channels = gChannelCount.load(std::memory_order_relaxed);
     const Float32 *samples = static_cast<const Float32 *>(ioMainBuffer);
     gMeter.publish(samples, inIOBufferFrameSize, channels);
     return kAudioHardwareNoError;

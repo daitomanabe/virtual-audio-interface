@@ -60,6 +60,7 @@ bool abrWriteConfig(uint32_t channelCount, double sampleRate) {
     if (!gShm && !abrOpen()) return false;
     gShm->requestedChannelCount = channelCount;
     gShm->requestedSampleRate = sampleRate;
+    __atomic_thread_fence(__ATOMIC_RELEASE); // values must be visible before the counter bump
     gShm->configCounter++;
     return true;
 }
