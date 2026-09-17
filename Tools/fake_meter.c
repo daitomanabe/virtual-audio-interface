@@ -1,9 +1,10 @@
-// Writes synthetic per-channel peaks + plausible status values into the
-// meter shared memory so the visualizer (including the Settings tab) can be
-// tested without installing the HAL plugin. Also honors config writes from
-// the app (requestedChannelCount) so the channel-count UI can be exercised
-// without a real driver.
-// Build: clang -o /tmp/fake_meter Tools/fake_meter.c   Run: /tmp/fake_meter
+// Writes synthetic per-channel peak/rms/clip values plus plausible status
+// values into the meter shared memory so the visualizer (including the
+// Settings tab) can be tested without installing the HAL plugin. Also
+// honors config writes from the app (requestedChannelCount) so the
+// channel-count UI can be exercised without a real driver.
+// Build: clang -o /tmp/fake_meter Tools/fake_meter.c
+// Run:   /tmp/fake_meter [sine|sweep|clip]   (default: sweep)
 #include "../Shared/MeterShm.h"
 #include <fcntl.h>
 #include <math.h>
@@ -12,7 +13,16 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-int main(void) {
+typedef enum { MODE_SINE, MODE_SWEEP, MODE_CLIP } Mode;
+
+int main(int argc, char **argv) {
+    Mode mode = MODE_SWEEP;
+    if (argc > 1) {
+        if (strcmp(argv[1], "sine") == 0) mode = MODE_SINE;
+        else if (strcmp(argv[1], "clip") == 0) mode = MODE_CLIP;
+        else mode = MODE_SWEEP;
+    }
+
     int fd = shm_open(VAI_SHM_NAME, O_CREAT | O_RDWR, 0666);
     if (fd < 0) { perror("shm_open"); return 1; }
     ftruncate(fd, sizeof(VAIMeterShm));
@@ -28,6 +38,7 @@ int main(void) {
     shm->zeroTimeStampPeriod = 16384;
     shm->hostRequestedSampleRate = 0.0;
 
+    const float sweepPeak = 0.5f; // -6 dBFS
     for (double t = 0;; t += 0.01) {
         // Reflect app-requested channel count so the Settings UI has
         // something real to observe without a driver present.
@@ -39,8 +50,39 @@ int main(void) {
         }
         shm->configAppliedCounter = shm->configCounter;
 
-        for (int ch = 0; ch < VAI_MAX_CHANNELS; ++ch)
-            shm->peakLevel[ch] = 0.5f + 0.5f * (float)sin(t * 2.0 + ch * 0.3);
+        uint32_t n = shm->channelCount;
+        switch (mode) {
+            case MODE_SINE:
+                for (uint32_t ch = 0; ch < n; ++ch) {
+                    float v = 0.5f + 0.5f * (float)sin(t * 2.0 + ch * 0.3);
+                    shm->peakLevel[ch] = v;
+                    shm->rmsLevel[ch] = v * 0.7f;
+                }
+                break;
+            case MODE_CLIP:
+                for (uint32_t ch = 0; ch < n; ++ch) {
+                    if (ch == 0) {
+                        shm->peakLevel[ch] = 1.2f;
+                        shm->rmsLevel[ch] = 0.9f;
+                        shm->clipCount[ch]++;
+                    } else {
+                        shm->peakLevel[ch] = 0.f;
+                        shm->rmsLevel[ch] = 0.f;
+                    }
+                }
+                break;
+            case MODE_SWEEP:
+            default: {
+                // One channel at a time, 0.5s each, -6 dBFS; everything else silent.
+                uint32_t active = n > 0 ? ((uint32_t)(t / 0.5) % n) : 0;
+                for (uint32_t ch = 0; ch < n; ++ch) {
+                    float v = (ch == active) ? sweepPeak : 0.f;
+                    shm->peakLevel[ch] = v;
+                    shm->rmsLevel[ch] = v;
+                }
+                break;
+            }
+        }
         shm->updateCounter++;
         usleep(10000);
     }
