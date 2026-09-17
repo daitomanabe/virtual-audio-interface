@@ -55,6 +55,45 @@ SSD は右手系・+Z-up・メートル単位。SceneKit は右手系・+Y-up。
 **同じ変換式がそのまま使える**(`VisualizerApp/Sources/SSDBridge/ssd_bridge.cpp`
 の `ssdb_load_speakers` 参照)。
 
+## 設定可能パラメータ / ホスト決定パラメータ
+
+VisualizerApp の Settings タブから、共有メモリ (`Shared/MeterShm.h` v2) 経由で
+HAL Plugin に設定を要求できる。HAL Plugin 側は `Plugin_Initialize` で起動する
+200ms 周期の `dispatch_source_t` タイマーが shm の `configCounter` を監視し、
+変化していれば `requestedChannelCount` / `requestedSampleRate` を検証した上で
+`RequestDeviceConfigurationChange` → `Plugin_PerformDeviceConfigurationChange`
+経由で適用する(IO スレッドからは直接呼ばない)。
+
+| パラメータ | 設定元 | 範囲 | shm フィールド |
+|---|---|---|---|
+| チャンネル数 | アプリ (Settings タブ) | 1〜128 | `requestedChannelCount` → `channelCount` |
+| サンプルレート | アプリ (Settings タブ) | 44100 / 48000 / 88200 / 96000 Hz | `requestedSampleRate` → `sampleRate` |
+
+**IO バッファサイズは HAL クライアント(DAW)が決めるため、plugin 側からは設定できない。**
+`Plugin_DoIOOperation` に渡される `inIOBufferFrameSize` を読み取って可視化するのみ。
+
+| ホスト決定値 (読み取り専用) | shm フィールド | 更新元 |
+|---|---|---|
+| 実際の IO バッファフレーム数 | `ioBufferFrameSize` | `Plugin_DoIOOperation` |
+| 実際に有効なサンプルレート | `sampleRate` | `Plugin_PerformDeviceConfigurationChange` |
+| Running 状態 | `isRunning` | `Plugin_StartIO` / `Plugin_StopIO` |
+| 接続クライアント数 | `clientCount` | `Plugin_AddDeviceClient` / `Plugin_RemoveDeviceClient` |
+| ZeroTimeStampPeriod | `zeroTimeStampPeriod` | `Plugin_Initialize` (固定値を publish) |
+| 最後に DAW から要求されたサンプルレート | `hostRequestedSampleRate` | `Plugin_SetPropertyData` |
+| 設定適用済みか | `configAppliedCounter` == `configCounter` | `Plugin_PerformDeviceConfigurationChange` / poll timer |
+
+設定変更の適用経路は HAL 標準のプロトコルに統一されている:
+`RequestDeviceConfigurationChange` の `inChangeAction` は常に「pending 設定を適用せよ」
+を意味する定数 (`kApplyPendingConfigAction`) のみを運び、実際の新レート/新チャンネル数は
+`gPendingSampleRate` / `gPendingChannelCount` (mutex 保護のグローバル変数) 経由で渡す。
+適用後は `kAudioStreamPropertyVirtualFormat` / `PhysicalFormat` と、デバイスの
+`kAudioDevicePropertyNominalSampleRate` / `kAudioDevicePropertyPreferredChannelLayout` の
+変更を `PropertiesChanged` で通知し、HAL / DAW 側がストリームフォーマット変更を認識できるようにしている。
+
+**注意: shm の config 領域(app → driver)はロックなしで、同一マシン内であれば
+任意のプロセスから書き込める。** ローカルユーザーのみが信頼される前提であり、
+リモート/マルチユーザー環境での保護は行っていない(ローカル単一ユーザー利用前提)。
+
 ## ディレクトリ構成
 
 ```
@@ -82,7 +121,8 @@ virtual-audio-interface/
             ├── ContentView.swift
             ├── AudioLevelsModel.swift   # 30Hzポーリングで共有メモリを読む
             ├── SSDSceneModel.swift      # .sscene ロード
-            ├── LevelMeterGridView.swift # 128ch バーメーター
+            ├── LevelMeterGridView.swift # 128ch バーメーター (有効チャンネル数以外は減光)
+            ├── SettingsView.swift       # チャンネル数/サンプルレート設定 + ホスト決定値表示
             └── SpeakerSceneView.swift   # SceneKit 3D表示 + レベル反映
 ```
 
@@ -115,6 +155,15 @@ setting 可能にした。設定要求は `RequestDeviceConfigurationChange` →
 (`gSampleRate` 更新・ゼロタイムスタンプの周期再計算)はそこで行う
 (`gStateMutex` で保護)。`kAudioStreamPropertyVirtualFormat` /
 `AvailableNominalSampleRates` もこの4レートを反映する。
+
+### チャンネル数・サンプルレートのアプリ設定化 (このセッション)
+shm を v2 レイアウト (`/vai_meter_v2`) に更新し、driver→app のステータス半分
+(IOバッファフレーム数・Running・クライアント数・ZeroTimeStampPeriod・ホスト要求
+レート) と app→driver の設定半分 (requestedChannelCount/requestedSampleRate +
+configCounter) を追加。HAL Plugin は 200ms 周期のポーリングタイマーで設定要求を
+検知し、`RequestDeviceConfigurationChange` の標準プロトコルに統一して適用する
+(詳細は上の「設定可能パラメータ / ホスト決定パラメータ」参照)。VisualizerApp
+には Settings タブを追加した。
 
 ### 未実装・残課題
 - [ ] **実機インストール手順の整備 (未検証)**: `.driver` バンドルを
