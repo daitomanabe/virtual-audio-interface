@@ -11,7 +11,6 @@ let package = Package(
             name: "VisualizerApp",
             dependencies: ["SSDBridge", "AudioBridge"]
         ),
-        .executableTarget(name: "VAIControl"),
     ],
     cxxLanguageStandard: .cxx17
 )

@@ -128,11 +128,12 @@ virtual-audio-interface/
         │   └── include/{audio_bridge.h, MeterShm.h}
         └── VisualizerApp/     # SwiftUI 本体
             ├── App.swift
-            ├── ContentView.swift
+            ├── ContentView.swift        # トップバー (Open/Reload + ドライバ状態表示) + タブ
+            ├── DriverController.swift   # ドライバ ON/OFF・状態プローブ (--status CLI も App.swift から利用)
             ├── AudioLevelsModel.swift   # 60Hzポーリングで共有メモリを読む
             ├── SSDSceneModel.swift      # .sscene ロード
             ├── LevelMeterGridView.swift # 128ch dBFSメーター (Canvas一枚描画、有効チャンネル数以外は減光)
-            ├── SettingsView.swift       # チャンネル数/サンプルレート設定 + ホスト決定値表示
+            ├── SettingsView.swift       # ドライバ状態 + チャンネル数/サンプルレート設定 + ホスト決定値表示
             ├── SpeakerSceneView.swift   # SceneKit 3D/平面表示 + レベル反映 + クリック選択
             ├── RoutingPanel.swift       # シーン情報・ルーティング警告・スピーカー一覧
             └── LevelStyle.swift         # dBFS 変換と色 (3D と一覧で共用)
@@ -197,13 +198,13 @@ configCounter) を追加。HAL Plugin は 200ms 周期のポーリングタイ�
 ## ビルドと起動
 
 ```bash
-./build_app.sh   # HAL ドライバ + dist/VAIControl.app + dist/VirtualAudioVisualizer.app
-open dist/VAIControl.app
-open dist/VirtualAudioVisualizer.app --args "$PWD/Examples/ring-8.sscene"
+./build_app.sh   # HAL ドライバ + dist/VirtualAudioInterface.app
+open dist/VirtualAudioInterface.app --args "$PWD/Examples/ring-8.sscene"
 ```
 
 `swift run` で実行ファイルを直接起動すると SwiftUI がウィンドウを作らないため、
-必ず `.app` から起動する。ヘッドレス確認は `dist/VAIControl.app/Contents/MacOS/VAIControl --status`、
+必ず `.app` から起動する。ヘッドレス確認は `dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --status`
+(ドライバの配置/プロセス/CoreAudioデバイス状態を1行出力)、
 `make -C Tools check`(selfcheck: 共有メモリ読み出し / ssdcheck: SSDBridge の親子変換・Mute/Enabled・軸変換)。
 
 ## Monitor タブ (スピーカー配置 / ルーティング検証)
@@ -235,7 +236,7 @@ Mute と Enabled=0 を含む)、`Examples/routing-errors.sscene` (警告の確�
 ### 自己撮影モード (--docshot)
 
 ```bash
-dist/VirtualAudioVisualizer.app/Contents/MacOS/VisualizerApp --docshot /tmp/vai-docshot "$PWD/Examples/dome-24.sscene"
+dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --docshot /tmp/vai-docshot "$PWD/Examples/dome-24.sscene"
 ```
 
 素の NSWindow (1400×900) に UI を載せ、Monitor の Top / Front / Side / Perspective、Meters、Settings を
@@ -243,7 +244,12 @@ dist/VirtualAudioVisualizer.app/Contents/MacOS/VisualizerApp --docshot /tmp/vai-
 (ch1 -3、ch3 -20、ch9 -50、未割り当ての ch30 -10、Mute / 無効スピーカーのチャンネル -10) で描く。
 このモードだけウィンドウを `orderFrontRegardless` で表示し、最後に開いたファイルの記録は更新しない。
 
-## VAIControl (ドライバ ON/OFF)
+## ドライバ ON/OFF
+
+`DriverController`(`VisualizerApp/Sources/VisualizerApp/DriverController.swift`)がアプリ全体で
+1 つ共有され、トップバー右端の状態表示(状態ドット・Driver ON/OFF ボタン・実行中スピナー)と
+Settings タブ先頭の「ドライバ」セクション(配置・PID・CoreAudio デバイス・直近メッセージ)の
+両方から購読する。
 
 | 操作 | 実行内容 (管理者権限) | 完了判定 |
 |---|---|---|
@@ -254,6 +260,7 @@ dist/VirtualAudioVisualizer.app/Contents/MacOS/VisualizerApp --docshot /tmp/vai-
   このプロセスだけ kill しても coreaudiod が再起動し得るため、バンドル削除 + coreaudiod 再起動で止める。
 - coreaudiod 再起動中は **他のオーディオデバイスも一瞬途切れる**。本番中の切り替えは避ける。
 - `HALPlugin/install.sh` は開発用(ビルド直後のドライバを直接インストール)。
+- ヘッドレス確認: `dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --status`
 
 ## 参照
 

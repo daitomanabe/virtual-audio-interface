@@ -5,6 +5,11 @@ import AppKit
 enum Main {
     @MainActor static func main() {
         let args = Array(CommandLine.arguments.dropFirst())
+        if args.contains("--status") {
+            let s = DriverController.probe()
+            print("installed=\(s.installed) helperPIDs=\(s.helperPIDs) devicePresent=\(s.devicePresent) on=\(s.isOn) off=\(s.isOff)")
+            exit(0)
+        }
         if let i = args.firstIndex(of: "--docshot") {
             guard i + 1 < args.count else {
                 print("usage: VisualizerApp --docshot <outdir> [scene.sscene]")
@@ -25,12 +30,13 @@ enum Main {
 
 struct VirtualAudioVisualizerApp: App {
     private let audioLevels = AudioLevelsModel()   // one poller shared by every window
+    private let driver = DriverController()        // one driver-state owner shared by every window
 
     init() { NSApplication.shared.setActivationPolicy(.regular) }
 
     var body: some Scene {
         WindowGroup {
-            ContentView(audioLevels: audioLevels, scenePath: Main.scenePathArgument)
+            ContentView(audioLevels: audioLevels, driver: driver, scenePath: Main.scenePathArgument)
         }
     }
 }
@@ -68,6 +74,7 @@ enum DocShot {
 
         NSApplication.shared.setActivationPolicy(.regular)
         let audio = AudioLevelsModel()
+        let driver = DriverController()
         let path = scenePath.map { URL(fileURLWithPath: $0).path }
         let shots: [(name: String, tab: MainTab, camera: CameraPreset, labels: LabelMode)] = [
             ("monitor-top", .monitor, .top, .numberAndName),
@@ -80,7 +87,7 @@ enum DocShot {
         func root(_ i: Int) -> AnyView {
             let s = shots[i]
             // .id(i) recreates ContentView so the initial tab/camera state applies.
-            return AnyView(ContentView(audioLevels: audio, scenePath: path, tab: s.tab, camera: s.camera,
+            return AnyView(ContentView(audioLevels: audio, driver: driver, scenePath: path, tab: s.tab, camera: s.camera,
                                        labelMode: s.labels, docshot: true).id(i))
         }
 

@@ -5,6 +5,7 @@ import SwiftUI
 /// read-only. See README "設定可能パラメータ / ホスト決定パラメータ".
 struct SettingsView: View {
     @ObservedObject var model: AudioLevelsModel
+    @ObservedObject var driver: DriverController
 
     static let supportedSampleRates: [Double] = [44100, 48000, 88200, 96000]
 
@@ -13,6 +14,18 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("ドライバ") {
+                let s = driver.snapshot
+                LabeledContent("配置", value: s.installed ? "あり" : "なし")
+                LabeledContent("PID", value: s.helperPIDs.isEmpty ? "なし" : "PID " + s.helperPIDs.map(String.init).joined(separator: ", "))
+                LabeledContent("CoreAudio デバイス", value: s.devicePresent ? "登録あり" : "なし")
+                if !driver.message.isEmpty {
+                    LabeledContent("直近のメッセージ", value: driver.message)
+                }
+                Text("ON/OFF は管理者パスワードが必要です。coreaudiod を再起動するため、他のオーディオデバイスも一瞬途切れます。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("設定 (アプリ → ドライバ)") {
                 Stepper(value: $requestedChannelCount, in: 1...128) {
                     HStack {
