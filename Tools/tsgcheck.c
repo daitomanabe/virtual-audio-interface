@@ -56,12 +56,21 @@ int main(void) {
     assert(fabsf(peak[4] - 0.1f) < 0.001f && fabsf(rms[4] - 0.0707f) < 0.001f);
     for (int c = 0; c < CH; c++) if (c != 4) assert(peak[c] == 0);
 
-    // Switch to pink on channel 2: channel 5 is silent after the 10 ms fade-out.
+    // Level and channel changed together: channel 5 fades out at its old level, channel 3 takes over.
+    tsgSetLevel(s, -6);
+    tsgSetChannel(s, 3);
+    render(s);
+    for (int f = 0; f < FRAMES; f++) assert(fabsf(buf[4][f]) <= 0.1001f);
+    measure(s, 10, peak, rms);
+    assert(peak[4] == 0 && fabsf(peak[2] - 0.501f) < 0.005f);
+
+    // Switch to pink on channel 2: channel 3 is silent after the 10 ms fade-out.
+    tsgSetLevel(s, -20);
     tsgSetSignal(s, TSG_PINK);
     tsgSetChannel(s, 2);
     render(s);
     int lastNonZero = -1;
-    for (int f = 0; f < FRAMES; f++) if (buf[4][f] != 0) lastNonZero = f;
+    for (int f = 0; f < FRAMES; f++) if (buf[2][f] != 0) lastNonZero = f;
     assert(lastNonZero >= 0 && lastNonZero < SR / 100);
     measure(s, 1000, peak, rms); // ~10.7 s
     printf("pink -20 dBFS ch2: peak %.4f rms %.4f\n", peak[1], rms[1]);

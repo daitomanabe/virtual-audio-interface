@@ -10,6 +10,8 @@
 #define FADE_SECONDS 0.010
 #define TWO_PI 6.283185307179586
 
+_Static_assert(ATOMIC_INT_LOCK_FREE == 2, "the render thread must never wait on a lock");
+
 struct TSGState {
     // main thread -> render thread
     _Atomic int32_t reqChannel;
@@ -87,13 +89,19 @@ static OSStatus render(void *refCon, AudioUnitRenderActionFlags *flags, const Au
 
     for (UInt32 f = 0; f < frames; f++) {
         if (s->channel != reqChannel || s->signal != reqSignal) {
-            s->env -= s->fadeStep;
-            if (s->env <= 0) { s->env = 0; s->channel = reqChannel; s->signal = reqSignal; }
-        } else if (s->env < 1) {
-            s->env = fminf(1, s->env + s->fadeStep);
+            // Fade out what is sounding at its current gain (nothing to fade when silent), then switch
+            // and start the new one directly at the requested gain.
+            s->env = s->channel == TSG_CHANNEL_NONE ? 0 : s->env - s->fadeStep;
+            if (s->env <= 0) {
+                s->env = 0;
+                s->channel = reqChannel;
+                s->signal = reqSignal;
+                s->gain = target;
+            }
+        } else {
+            if (s->env < 1) s->env = fminf(1, s->env + s->fadeStep);
+            s->gain += (target - s->gain) * s->gainCoef;
         }
-        if (s->env == 0) s->gain = target; // silent anyway: jump instead of ramping
-        else s->gain += (target - s->gain) * s->gainCoef;
 
         float x;
         if (s->signal == TSG_SINE) {
