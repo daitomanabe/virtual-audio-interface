@@ -1,22 +1,49 @@
 import SwiftUI
 
-/// 128ch dBFS level meter grid, drawn as a single Canvas. 128 individual
-/// SwiftUI views + GeometryReader (the previous implementation) each
-/// re-layout every frame at 60Hz; one Canvas.draw call is far cheaper.
+/// "All channels" (fixed 1...128 grid) vs "Layout" (grouped by the loaded
+/// SSD scene's speaker height layers). Persisted across launches.
+enum MeterMode: String, CaseIterable, Identifiable {
+    case all, layout
+    var id: Self { self }
+    var label: String { self == .all ? "All channels" : "Layout" }
+}
+
+/// One drawn section of the meter grid: a header (nil for the flat "All
+/// channels" grid) plus the channels it contains, laid out in a flow like
+/// the original 128-channel grid. `showBadges` gates the Mute/disabled
+/// badge — only Layout's SSD-backed groups show it, so "All channels"
+/// keeps its existing appearance.
+private struct MeterSection: Identifiable {
+    let id: String
+    let header: String?
+    let channels: [Int]
+    let showBadges: Bool
+}
+
+/// 128ch dBFS level meter grid, drawn as a single Canvas per section. 128
+/// individual SwiftUI views + GeometryReader (the previous implementation)
+/// each re-layout every frame at 60Hz; one Canvas.draw call per section is
+/// far cheaper.
 struct LevelMeterGridView: View {
     @ObservedObject var model: AudioLevelsModel
-    var labels: [Int: String]
-    var assigned: Set<Int>?
+    var speakers: [Speaker]
+    var levelOverride: [Float]?      // --docshot synthetic levels
     var selectedChannel: Binding<Int?>
 
+    @State private var mode: MeterMode
+
+    static let modeKey = "meterGridMode"     // shared with DocShot for the layout screenshot
+
     init(model: AudioLevelsModel,
-         labels: [Int: String] = [:],
-         assigned: Set<Int>? = nil,
+         speakers: [Speaker] = [],
+         levelOverride: [Float]? = nil,
          selectedChannel: Binding<Int?> = .constant(nil)) {
         self._model = ObservedObject(wrappedValue: model)
-        self.labels = labels
-        self.assigned = assigned
+        self.speakers = speakers
+        self.levelOverride = levelOverride
         self.selectedChannel = selectedChannel
+        let saved = UserDefaults.standard.string(forKey: Self.modeKey).flatMap(MeterMode.init(rawValue:)) ?? .all
+        _mode = State(initialValue: saved)
     }
 
     private static let minMeterWidth: CGFloat = 36
@@ -27,11 +54,86 @@ struct LevelMeterGridView: View {
     private static let dbMin: Float = -60
     private static let dbMax: Float = 0
     private static let gridlines: [Float] = [0, -6, -12, -24, -48]
+    /// ponytail: fixed adjacent-gap threshold for grouping speakers into height
+    /// layers. Good enough for typical dome/ring layouts; promote to a UI
+    /// slider if real scenes need a different value.
+    private static let layerGapMeters: Double = 0.5
+
+    // MARK: - Derived from `speakers` (scene-wide, cheap even recomputed at 60Hz)
+
+    private var assigned: Set<Int>? { speakers.isEmpty ? nil : Set(speakers.map(\.channel)) }
+    private var labels: [Int: String] {
+        Dictionary(grouping: speakers, by: \.channel).mapValues { $0.map(\.name).joined(separator: ",") }
+    }
+    private var mutedChannels: Set<Int> { Set(speakers.filter(\.mute).map(\.channel)) }
+    private var disabledChannels: Set<Int> { Set(speakers.filter { !$0.active }.map(\.channel)) }
+
+    /// The selection shown in the mode picker: forced to `.all` (and disabled)
+    /// when no scene is loaded, regardless of the persisted preference.
+    private var modeBinding: Binding<MeterMode> {
+        Binding(
+            get: { speakers.isEmpty ? .all : mode },
+            set: { newValue in
+                mode = newValue
+                UserDefaults.standard.set(newValue.rawValue, forKey: Self.modeKey)
+            })
+    }
+
+    /// Speakers grouped into height layers, highest first: sort by z, start a
+    /// new layer whenever the gap to the previous speaker exceeds `layerGapMeters`.
+    private static func zLayers(_ speakers: [Speaker]) -> [(z: Double, speakers: [Speaker])] {
+        let sorted = speakers.sorted { $0.position.z > $1.position.z }
+        var groups: [[Speaker]] = []
+        for s in sorted {
+            if let lastZ = groups.last?.last?.position.z, lastZ - s.position.z <= layerGapMeters {
+                groups[groups.count - 1].append(s)
+            } else {
+                groups.append([s])
+            }
+        }
+        return groups.map { g in
+            (z: g.reduce(0) { $0 + $1.position.z } / Double(g.count), speakers: g)
+        }
+    }
+
+    private var unassignedWithSignal: [Int] {
+        guard !speakers.isEmpty else { return [] }
+        let assignedChannels = Set(speakers.map(\.channel))
+        return (1...AudioLevelsModel.channelCount).filter {
+            !assignedChannels.contains($0) && levels(for: $0).peak > AudioLevelsModel.signalThresholdDB
+        }
+    }
+
+    private var sections: [MeterSection] {
+        guard mode == .layout, !speakers.isEmpty else {
+            return [MeterSection(id: "all", header: nil, channels: Array(1...AudioLevelsModel.channelCount), showBadges: false)]
+        }
+        var result = Self.zLayers(speakers).enumerated().map { i, layer -> MeterSection in
+            let channels = Set(layer.speakers.map(\.channel)).sorted()
+            let count = layer.speakers.count
+            let header = "z \u{2248} \(String(format: "%.1f", layer.z)) m \u{b7} \(count) speaker\(count == 1 ? "" : "s")"
+            return MeterSection(id: "layer-\(i)", header: header, channels: channels, showBadges: true)
+        }
+        let unassigned = unassignedWithSignal
+        if !unassigned.isEmpty {
+            result.append(MeterSection(id: "unassigned", header: "Unassigned with signal", channels: unassigned, showBadges: false))
+        }
+        return result
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 Button("Reset Clips") { model.resetClips() }
+                Spacer()
+                Picker("Mode", selection: modeBinding) {
+                    ForEach(MeterMode.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .disabled(speakers.isEmpty)
+                .help(speakers.isEmpty ? "Load a .sscene to enable Layout mode" : "")
                 Spacer()
                 Text("\(model.status.available ? Int(model.status.channelCount) : AudioLevelsModel.channelCount) ch")
                     .font(.caption).foregroundStyle(.secondary)
@@ -41,58 +143,88 @@ struct LevelMeterGridView: View {
             GeometryReader { geo in
                 let columns = max(1, Int(geo.size.width / Self.minMeterWidth))
                 let meterWidth = geo.size.width / CGFloat(columns)
-                let rows = Int(ceil(Double(AudioLevelsModel.channelCount) / Double(columns)))
-                let canvasHeight = CGFloat(rows) * Self.rowHeight
-
                 ScrollView(.vertical) {
-                    Canvas { context, size in
-                        draw(context: context, size: size, columns: columns, meterWidth: meterWidth)
-                    }
-                    .frame(width: geo.size.width, height: canvasHeight)
-                    .gesture(SpatialTapGesture().onEnded { value in
-                        if let ch = channel(at: value.location, columns: columns, meterWidth: meterWidth) {
-                            selectedChannel.wrappedValue = ch
+                    VStack(alignment: .leading, spacing: 14) {
+                        ForEach(sections) { section in
+                            sectionView(section, columns: columns, meterWidth: meterWidth, width: geo.size.width)
                         }
-                    })
+                    }
+                    .padding(.vertical, sections.first?.header != nil ? 8 : 0)
                 }
             }
         }
     }
 
-    private func channel(at point: CGPoint, columns: Int, meterWidth: CGFloat) -> Int? {
+    @ViewBuilder
+    private func sectionView(_ section: MeterSection, columns: Int, meterWidth: CGFloat, width: CGFloat) -> some View {
+        let rows = max(1, Int(ceil(Double(section.channels.count) / Double(columns))))
+        let height = CGFloat(rows) * Self.rowHeight
+        VStack(alignment: .leading, spacing: 2) {
+            if let header = section.header {
+                Text(header).font(.caption.bold()).foregroundStyle(.secondary).padding(.horizontal, 8)
+            }
+            Canvas { context, size in
+                draw(context: context, size: size, section: section, columns: columns, meterWidth: meterWidth)
+            }
+            .frame(width: width, height: height)
+            .gesture(SpatialTapGesture().onEnded { value in
+                if let ch = channel(at: value.location, section: section, columns: columns, meterWidth: meterWidth) {
+                    selectedChannel.wrappedValue = ch
+                }
+            })
+        }
+    }
+
+    private func channel(at point: CGPoint, section: MeterSection, columns: Int, meterWidth: CGFloat) -> Int? {
         guard meterWidth > 0 else { return nil }
         let col = Int(point.x / meterWidth)
         let row = Int(point.y / Self.rowHeight)
         guard col >= 0, col < columns, row >= 0 else { return nil }
-        let ch = row * columns + col + 1
-        return (1...AudioLevelsModel.channelCount).contains(ch) ? ch : nil
+        let index = row * columns + col
+        guard index >= 0, index < section.channels.count else { return nil }
+        return section.channels[index]
     }
 
-    private func draw(context: GraphicsContext, size: CGSize, columns: Int, meterWidth: CGFloat) {
+    private func draw(context: GraphicsContext, size: CGSize, section: MeterSection, columns: Int, meterWidth: CGFloat) {
         let activeCount = model.status.available ? Int(model.status.channelCount) : AudioLevelsModel.channelCount
-        for ch in 1...AudioLevelsModel.channelCount {
-            let index = ch - 1
+        for (index, ch) in section.channels.enumerated() {
             let row = index / columns
             let col = index % columns
             let rect = CGRect(x: CGFloat(col) * meterWidth, y: CGFloat(row) * Self.rowHeight,
                                width: meterWidth, height: Self.rowHeight)
-            drawMeter(context: context, rect: rect, channel: ch, isActive: ch <= activeCount)
+            drawMeter(context: context, rect: rect, channel: ch, isActive: ch <= activeCount,
+                      muted: section.showBadges && mutedChannels.contains(ch),
+                      disabled: section.showBadges && disabledChannels.contains(ch))
         }
     }
 
-    private func drawMeter(context: GraphicsContext, rect: CGRect, channel ch: Int, isActive: Bool) {
+    /// Peak/RMS/hold dBFS + clip state for one channel, from either the live
+    /// model or (in --docshot) the synthetic override — same values a static
+    /// screenshot needs, no ballistics required.
+    private func levels(for ch: Int) -> (peak: Float, rms: Float, hold: Float, clipped: Bool) {
+        let index = ch - 1
+        if let override = levelOverride {
+            let db = index >= 0 && index < override.count ? dbFS(override[index]) : AudioLevelsModel.dbFloor
+            return (db, db, db, false)
+        }
+        let peak = index >= 0 && index < model.peakDB.count ? model.peakDB[index] : AudioLevelsModel.dbFloor
+        let rms = index >= 0 && index < model.rmsDB.count ? model.rmsDB[index] : AudioLevelsModel.dbFloor
+        let hold = index >= 0 && index < model.holdDB.count ? model.holdDB[index] : AudioLevelsModel.dbFloor
+        return (peak, rms, hold, model.clipped.contains(ch))
+    }
+
+    private func drawMeter(context: GraphicsContext, rect: CGRect, channel ch: Int, isActive: Bool,
+                            muted: Bool = false, disabled: Bool = false) {
         var layer = context
         let meterRect = rect.insetBy(dx: 2, dy: 2)
-        let index = ch - 1
-        let peakDB = index < model.peakDB.count ? model.peakDB[index] : AudioLevelsModel.dbFloor
-        let rmsDB = index < model.rmsDB.count ? model.rmsDB[index] : AudioLevelsModel.dbFloor
-        let holdDB = index < model.holdDB.count ? model.holdDB[index] : AudioLevelsModel.dbFloor
-        let isClipped = model.clipped.contains(ch)
+        let lv = levels(for: ch)
+        let peakDB = lv.peak, rmsDB = lv.rms, holdDB = lv.hold
+        let isClipped = lv.clipped
         let isSelected = selectedChannel.wrappedValue == ch
         let hasSignal = peakDB > AudioLevelsModel.signalThresholdDB
         let isUnassigned = isActive && hasSignal && assigned != nil && !(assigned?.contains(ch) ?? true)
 
-        layer.opacity = isActive ? 1.0 : 0.3
+        layer.opacity = (isActive ? 1.0 : 0.3) * (muted || disabled ? 0.5 : 1.0)
 
         // Clip LED (top, latched).
         let ledRect = CGRect(x: meterRect.midX - Self.ledSize / 2, y: meterRect.minY,
@@ -103,6 +235,13 @@ struct LevelMeterGridView: View {
         if isUnassigned {
             layer.draw(Text("未割当").font(.system(size: 7)).foregroundColor(.orange),
                        at: CGPoint(x: meterRect.midX, y: meterRect.minY + Self.ledSize + 6), anchor: .top)
+        }
+
+        // Mute / disabled badge (Layout mode's SSD groups only).
+        if muted || disabled {
+            let badge = [muted ? "M" : nil, disabled ? "off" : nil].compactMap { $0 }.joined(separator: ",")
+            layer.draw(Text(badge).font(.system(size: 7, weight: .bold)).foregroundColor(muted ? .red : .orange),
+                       at: CGPoint(x: meterRect.maxX - 1, y: meterRect.minY), anchor: .topTrailing)
         }
 
         // Bar area between the top and bottom label bands.

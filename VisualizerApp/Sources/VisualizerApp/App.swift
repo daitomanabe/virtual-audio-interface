@@ -132,8 +132,23 @@ enum DocShot {
             ("monitor-side", .monitor, .side, .number),
             ("monitor-perspective", .monitor, .perspective, .number),
             ("meters", .meters, .top, .number),
+            ("meters-layout", .meters, .top, .number),
             ("settings", .settings, .top, .number),
         ]
+        // LevelMeterGridView reads its All/Layout mode from UserDefaults on init;
+        // force it per shot and restore whatever the user had before exiting, so
+        // running docshot never changes the real app's persisted preference.
+        let savedMeterMode = UserDefaults.standard.string(forKey: LevelMeterGridView.modeKey)
+        func setMeterMode(_ mode: MeterMode) {
+            UserDefaults.standard.set(mode.rawValue, forKey: LevelMeterGridView.modeKey)
+        }
+        func restoreMeterMode() {
+            if let savedMeterMode {
+                UserDefaults.standard.set(savedMeterMode, forKey: LevelMeterGridView.modeKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: LevelMeterGridView.modeKey)
+            }
+        }
         func root(_ i: Int) -> AnyView {
             let s = shots[i]
             // .id(i) recreates ContentView so the initial tab/camera state applies.
@@ -153,6 +168,8 @@ enum DocShot {
 
         Task { @MainActor in
             for (i, shot) in shots.enumerated() {
+                if shot.name == "meters" { setMeterMode(.all) }
+                if shot.name == "meters-layout" { setMeterMode(.layout) }
                 if i > 0 { host.rootView = root(i) }
                 try? await Task.sleep(nanoseconds: i == 0 ? 4_000_000_000 : 2_500_000_000)
                 guard let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber),
@@ -168,6 +185,7 @@ enum DocShot {
                     log("docshot: write failed for \(shot.name): \(error)")
                 }
             }
+            restoreMeterMode()
             log("docshot: done")
             exit(0)
         }
