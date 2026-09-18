@@ -75,7 +75,7 @@ struct RoutingPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            if sceneModel.path != nil { sceneInfo }
+            if sceneModel.loadedAt != nil { sceneInfo }
             LiveIssues(sceneModel: sceneModel, audio: audio, levelOverride: levelOverride, selectedChannel: $selectedChannel)
             Divider()
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
@@ -87,7 +87,8 @@ struct RoutingPanel: View {
                     .help("Only speakers above \(Int(LevelThreshold.signal)) dBFS that can sound")
             }
             if sceneModel.speakers.isEmpty {
-                placeholder(sceneModel.path == nil ? "No layout loaded" : "The layout has no speakers")
+                placeholder(sceneModel.path == nil ? "No layout loaded"
+                            : sceneModel.loadedAt == nil ? "The layout could not be loaded" : "The layout has no speakers")
             } else if soundingOnly {
                 SoundingSpeakerTable(sceneModel: sceneModel, audio: audio, levelOverride: levelOverride,
                                      selectedChannel: $selectedChannel, applyGain: applyGain)
