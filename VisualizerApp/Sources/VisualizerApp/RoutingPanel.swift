@@ -238,21 +238,21 @@ private struct SpeakerTable: View {
         let table = Table(rows, selection: selection) {
             // Levels sit next to Name so they stay visible when the panel is narrow. The bar is drawn
             // in the column that drives the 3D view (Post-gain with Apply SSD gain, else Level).
-            TableColumn("Ch") { number("\($0.channel)", dim: $0.silent) }.width(32)
+            TableColumn("Ch") { number("\($0.channel)", dim: $0.silent) }.width(28)
             TableColumn("Name") { Text($0.name).foregroundStyle($0.silent ? .secondary : .primary) }
-                .width(min: 40, ideal: 64)
+                .width(min: 40, ideal: 56)
             TableColumn("Level dBFS") {
                 LevelCell(audio: audio, levelOverride: levelOverride, speaker: $0, postGain: false, showsBar: !applyGain)
-            }.width(90)
+            }.width(84)
             TableColumn("Post-gain") {
                 LevelCell(audio: audio, levelOverride: levelOverride, speaker: $0, postGain: true, showsBar: applyGain)
-            }.width(90)
+            }.width(84)
             TableColumn("Gain dB") { number(String(format: "%.1f", $0.gainDb), dim: $0.gainDb == 0) }.width(52)
-            TableColumn("Delay ms") { number(String(format: "%.1f", $0.delayMs), dim: $0.delayMs == 0) }.width(58)
-            TableColumn("ID") { Text($0.objectID).foregroundStyle(.secondary) }.width(min: 24, ideal: 36)
+            TableColumn("Delay ms") { number(String(format: "%.1f", $0.delayMs), dim: $0.delayMs == 0) }.width(56)
+            TableColumn("ID") { Text($0.objectID).foregroundStyle(.secondary) }.width(min: 24, ideal: 30)
             TableColumn("x, y, z m") { s in
                 number(String(format: "%.2f, %.2f, %.2f", s.position.x, s.position.y, s.position.z), dim: false)
-            }.width(min: 100, ideal: 124)
+            }.width(min: 96, ideal: 110)
         }
         if #available(macOS 14.0, *) {
             table.alternatingRowBackgrounds(.disabled)   // no striped empty rows below a short list
