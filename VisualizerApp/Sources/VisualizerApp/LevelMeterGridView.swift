@@ -26,7 +26,7 @@ struct LevelMeterGridView: View {
     private static let minMeterWidth: CGFloat = 36
     private static let maxMeterWidth: CGFloat = 88     // Layout: a few meters get wider, up to this
     private static let maxBarWidth: CGFloat = 40
-    private static let minRowHeight: CGFloat = 124
+    private static let minRowHeight: CGFloat = 108    // all 128 channels fit a 1000x640 window
     private static let headerHeight: CGFloat = 22
     private static let groupGap: CGFloat = 24
     private static let lineGap: CGFloat = 12

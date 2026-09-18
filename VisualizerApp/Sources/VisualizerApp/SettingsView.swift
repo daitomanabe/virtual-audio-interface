@@ -40,7 +40,7 @@ struct SettingsView: View {
                 }
                 Picker("Sample rate", selection: $requestedSampleRate) {
                     ForEach(Self.supportedSampleRates, id: \.self) { rate in
-                        Text("\(Int(rate)) Hz").tag(rate)
+                        Text(verbatim: "\(Int(rate)) Hz").tag(rate)   // 48000 Hz, like the values below
                     }
                 }
                 Button("Apply") {
