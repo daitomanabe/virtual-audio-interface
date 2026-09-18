@@ -27,9 +27,10 @@ final class DriverController: ObservableObject {
 
     init() {
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in if self?.busy == false { self?.refresh() } }
         }
+        RunLoop.main.add(timer!, forMode: .common) // keep running during menu tracking and live resize
     }
 
     func refresh() { snapshot = Self.probe() }

@@ -57,9 +57,10 @@ final class AudioLevelsModel: ObservableObject {
     private static let staleAfter: TimeInterval = 0.25
 
     init() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+        timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
+        RunLoop.main.add(timer!, forMode: .common) // keep running during menu tracking and live resize
     }
 
     deinit {
