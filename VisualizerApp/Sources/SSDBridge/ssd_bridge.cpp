@@ -72,6 +72,138 @@ extern "C" int32_t ssdb_load_scene(const char *path, SSDBSceneInfo *outInfo,
     }
 }
 
+extern "C" SSDBMatrix ssdb_matrix_to_scenekit(SSDBMatrix in) {
+    double b[3][3]; // columns: the SSD axes mapped by ssdb_to_scenekit. A rotation, so B^-1 = B^T.
+    for (int j = 0; j < 3; ++j) {
+        SSDBVec3 c = ssdb_to_scenekit(j == 0, j == 1, j == 2);
+        b[0][j] = c.x, b[1][j] = c.y, b[2][j] = c.z;
+    }
+    SSDBMatrix out{};
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            double s = 0; // (B R B^T)_ij
+            for (int k = 0; k < 3; ++k)
+                for (int l = 0; l < 3; ++l) s += b[i][k] * in.m[k * 4 + l] * b[j][l];
+            out.m[i * 4 + j] = s;
+        }
+        for (int k = 0; k < 3; ++k) out.m[i * 4 + 3] += b[i][k] * in.m[k * 4 + 3]; // B t
+    }
+    return out;
+}
+
+extern "C" int32_t ssdb_load_objects(const char *path, SSDBObjectInfo *outObjects, int32_t maxObjects,
+                                     char *outWarnings, int32_t warningsCapacity,
+                                     char *outErrorMessage, int32_t errorMessageCapacity) {
+    using ssdreader::Row;
+    try {
+        ssdreader::Scene scene = ssdreader::load(path);
+        std::vector<std::string> warnings;
+
+        std::map<std::string, int32_t> index; // OBJECT ID -> output slot, file order
+        const auto &rows = scene.sections["OBJECT"];
+        for (const Row &r : rows) {
+            if (int32_t(index.size()) >= maxObjects) {
+                warnings.push_back("Only the first " + std::to_string(maxObjects) + " of " +
+                                   std::to_string(rows.size()) + " OBJECT rows are shown");
+                break;
+            }
+            index.emplace(r.cells[0], int32_t(index.size()));
+        }
+        for (const auto &[id, i] : index) {
+            const ssdreader::Object &o = scene.objects.at(id);
+            SSDBObjectInfo &out = outObjects[i];
+            out = SSDBObjectInfo{};
+            copyText(out.objectId, sizeof out.objectId, id);
+            copyText(out.type, sizeof out.type, o.type);
+            copyText(out.name, sizeof out.name, o.name);
+            auto parent = index.find(o.parent);
+            out.parent = parent == index.end() ? -1 : parent->second;
+            out.active = o.active;
+            for (int r = 0; r < 3; ++r) {
+                for (int c = 0; c < 3; ++c) out.world.m[r * 4 + c] = o.world.r[r][c];
+                out.world.m[r * 4 + 3] = o.world.t[r];
+            }
+            out.target = -1;
+        }
+
+        // Geometry rows: a bad row is skipped with a warning, the rest of the scene still loads.
+        // Each apply() validates everything before setting its has* flag.
+        auto positive = [](const Row &r, size_t col, const char *field) {
+            const double v = ssdreader::number(r, col, field);
+            if (v <= 0) ssdreader::fail(r.line, std::string(field) + " must be > 0, got '" + r.cells[col] + "'");
+            return v;
+        };
+        auto angle = [](const Row &r, size_t col, const char *field) {
+            const double v = ssdreader::number(r, col, field);
+            if (v <= 0 || v >= 180)
+                ssdreader::fail(r.line, std::string(field) + " must be in (0, 180) degrees, got '" + r.cells[col] + "'");
+            return v;
+        };
+        auto requireType = [](const Row &r, const ssdreader::Object &o, const std::string &type) {
+            if (o.type != type)
+                ssdreader::fail(r.line, "OBJECT " + r.cells[0] + " has Type '" + o.type + "', expected '" + type + "'");
+        };
+        auto each = [&](const std::string &section, auto &&apply) {
+            std::set<std::string> seen;
+            for (const Row &r : scene.sections[section]) {
+                try {
+                    auto object = scene.objects.find(r.cells[0]);
+                    if (object == scene.objects.end()) ssdreader::fail(r.line, "no OBJECT with ID '" + r.cells[0] + "'");
+                    if (!seen.insert(r.cells[0]).second) ssdreader::fail(r.line, "duplicate row for " + r.cells[0]);
+                    SSDBObjectInfo scratch{}; // objects cut off by maxObjects are still validated
+                    auto slot = index.find(r.cells[0]);
+                    apply(r, object->second, slot == index.end() ? scratch : outObjects[slot->second]);
+                } catch (const ssdreader::Error &e) {
+                    warnings.push_back("[" + section + "] row ignored: " + e.what());
+                }
+            }
+        };
+        static const std::pair<const char *, const char *> rects[] = {
+            {"SCREEN", "screen"}, {"SURFACE", "surface"}, {"LED", "led"}};
+        for (const auto &rect : rects) {
+            each(rect.first, [&](const Row &r, const ssdreader::Object &o, SSDBObjectInfo &out) {
+                requireType(r, o, rect.second);
+                const double w = positive(r, 1, "Width"), h = positive(r, 2, "Height");
+                if (rect.second == std::string("led")) {
+                    out.pixelWidth = ssdreader::integer(r, 3, "PixelWidth", 1);
+                    out.pixelHeight = ssdreader::integer(r, 4, "PixelHeight", 1);
+                }
+                out.width = w, out.height = h, out.hasRect = true;
+            });
+        }
+        each("BOX", [&](const Row &r, const ssdreader::Object &, SSDBObjectInfo &out) {
+            const double x = positive(r, 1, "SizeX"), y = positive(r, 2, "SizeY"), z = positive(r, 3, "SizeZ");
+            out.sizeX = x, out.sizeY = y, out.sizeZ = z, out.hasBox = true;
+        });
+        each("FOV", [&](const Row &r, const ssdreader::Object &, SSDBObjectInfo &out) {
+            const double h = angle(r, 1, "Horizontal"), v = angle(r, 2, "Vertical"), d = positive(r, 3, "Distance");
+            out.fovHorizontal = h, out.fovVertical = v, out.fovDistance = d, out.hasFov = true;
+        });
+        each("CAMERA", [&](const Row &r, const ssdreader::Object &o, SSDBObjectInfo &out) {
+            requireType(r, o, "camera");
+            const double h = angle(r, 1, "FovH"), v = angle(r, 2, "FovV");
+            out.cameraFovH = h, out.cameraFovV = v, out.hasCamera = true;
+        });
+        each("PROJECTOR", [&](const Row &r, const ssdreader::Object &o, SSDBObjectInfo &out) {
+            requireType(r, o, "projector");
+            auto target = scene.objects.find(r.cells[2]);
+            if (target == scene.objects.end() ||
+                (target->second.type != "screen" && target->second.type != "surface" && target->second.type != "led"))
+                ssdreader::fail(r.line, "TargetID '" + r.cells[2] + "' is not a screen/surface/led OBJECT");
+            auto slot = index.find(r.cells[2]);
+            out.target = slot == index.end() ? -1 : slot->second;
+        });
+
+        std::string joined;
+        for (const auto &w : warnings) joined += (joined.empty() ? "" : "\n") + w;
+        copyText(outWarnings, warningsCapacity > 0 ? size_t(warningsCapacity) : 0, joined);
+        return int32_t(index.size());
+    } catch (const std::exception &e) {
+        copyText(outErrorMessage, errorMessageCapacity > 0 ? size_t(errorMessageCapacity) : 0, e.what());
+        return -1;
+    }
+}
+
 extern "C" int32_t ssdb_load_speakers(const char *path, SSDBSpeaker *outSpeakers, int32_t maxSpeakers,
                                        char *outErrorMessage, int32_t errorMessageCapacity) {
     std::vector<SSDBSpeakerInfo> info(maxSpeakers > 0 ? size_t(maxSpeakers) : 0);
