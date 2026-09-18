@@ -48,8 +48,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let audioLevels = AudioLevelsModel()
     private let driver = DriverController()
     private var window: NSWindow?
+    /// Keeps meters, driver probing and test-signal stepping at full rate while the app sits
+    /// behind the DAW; without it App Nap throttles the timers once the window is covered.
+    private var activity: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        activity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiatedAllowingIdleSystemSleep, .latencyCritical],
+            reason: "Realtime level metering and speaker visualization")
         NSApp.mainMenu = Self.makeMainMenu()
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1400, height: 900),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -105,7 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 /// `VisualizerApp --docshot <outdir> [scene.sscene] [--appearance light|dark] [--size WxH]`: self-captures
 /// each tab to PNG and exits. The window is 1400x900 pt unless `--size` says otherwise (content minimum 1000x640).
 /// A background launch never gets a WindowGroup window, so this hosts ContentView in a
-/// plain NSWindow; orderFrontRegardless is allowed in this mode only.
+/// plain NSWindow, ordered behind every other window so a capture never covers what the user is doing.
 @MainActor
 enum DocShot {
     /// Test levels so the Monitor tab has something to show: ch1 -3, ch3 -20, ch9 -50,
@@ -134,7 +140,7 @@ enum DocShot {
             }
         }
 
-        NSApplication.shared.setActivationPolicy(.regular)
+        NSApplication.shared.setActivationPolicy(.accessory) // no Dock icon, never activates
         if let appearance {
             NSApplication.shared.appearance = NSAppearance(named: appearance == "light" ? .aqua : .darkAqua)
         }
@@ -178,7 +184,7 @@ enum DocShot {
         window.isReleasedWhenClosed = false
         let host = NSHostingView(rootView: root(0))
         window.contentView = host
-        window.orderFrontRegardless()
+        window.orderBack(nil)
         log("docshot: window \(window.windowNumber), scene \(path ?? "(last opened)"), appearance \(appearance ?? "system")")
 
         Task { @MainActor in
