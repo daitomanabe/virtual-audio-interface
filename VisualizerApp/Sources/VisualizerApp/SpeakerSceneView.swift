@@ -121,7 +121,7 @@ struct SpeakerSceneView: NSViewRepresentable {
             nodes = []
             objectLabels = []
             let others = objects.filter { $0.type != "speaker" }
-            lo = .zero; hi = .zero                      // bounds include the listener at the origin
+            lo = [-3, -3, 0]; hi = [3, 3, 0]            // the listener's surroundings, even for an empty scene
             for p in speakers.map(\.position) + others.flatMap(extent) {
                 lo = pointwiseMin(lo, p); hi = pointwiseMax(hi, p)
             }
