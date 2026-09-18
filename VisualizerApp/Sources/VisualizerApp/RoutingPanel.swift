@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct RoutingIssue: Identifiable {
-    enum Severity: Int { case error, warning, info }
+    enum Severity: Int, CaseIterable { case error, warning, info }
     let id: String
     let severity: Severity
-    let text: String
+    let text: String                 // without the channel, which the list shows in its own column
     let channel: Int?
 
     /// Re-evaluated on every level update (30 Hz); O(channels + speakers).
@@ -14,28 +14,30 @@ struct RoutingIssue: Identifiable {
         func sounding(_ ch: Int) -> Bool { channelDb(levels, ch) > LevelThreshold.signal }
         let byChannel = Dictionary(grouping: speakers, by: \.channel)
 
-        for ch in levels.indices.map({ $0 + 1 }) where sounding(ch) && byChannel[ch] == nil {
+        // Without a layout every channel would be "unassigned"; the meters skip that case too.
+        for ch in levels.indices.map({ $0 + 1 }) where !speakers.isEmpty && sounding(ch) && byChannel[ch] == nil {
             out.append(.init(id: "unassigned-\(ch)", severity: .error,
-                             text: "Ch \(ch): signal (\(dbText(ch))) but no speaker assigned", channel: ch))
+                             text: "Signal at \(dbText(ch)), no speaker assigned", channel: ch))
         }
         for (ch, list) in byChannel.sorted(by: { $0.key < $1.key }) {
             let names = list.map(\.displayName).joined(separator: ", ")
             if ch > deviceChannels {
                 out.append(.init(id: "range-\(ch)", severity: .error,
-                                 text: "Ch \(ch) (\(names)): beyond the device's \(deviceChannels) active channels", channel: ch))
+                                 text: "\(names): beyond the device's \(deviceChannels) active channels", channel: ch))
             }
             if list.count > 1 {
                 out.append(.init(id: "shared-\(ch)", severity: .info,
-                                 text: "Ch \(ch): shared by \(list.count) speakers (\(names))", channel: ch))
+                                 text: "Shared by \(list.count) speakers: \(names)", channel: ch))
             }
             guard sounding(ch) else { continue }
             for s in list where s.mute {
                 out.append(.init(id: "mute-\(s.id)", severity: .warning,
-                                 text: "Ch \(ch) (\(s.displayName)): muted but carries signal (\(dbText(ch)))", channel: ch))
+                                 text: "\(s.displayName) is muted but receives \(dbText(ch))", channel: ch))
             }
             for s in list where !s.active {
                 out.append(.init(id: "disabled-\(s.id)", severity: .warning,
-                                 text: "Ch \(ch) (\(s.displayName)): disabled (Enabled 0 on it or a parent) but carries signal (\(dbText(ch)))", channel: ch))
+                                 text: "\(s.displayName) is disabled (Enabled 0 on it or a parent) but receives \(dbText(ch))",
+                                 channel: ch))
             }
         }
         for (i, w) in parserWarnings.enumerated() {
@@ -45,11 +47,22 @@ struct RoutingIssue: Identifiable {
     }
 }
 
+extension RoutingIssue.Severity {
+    var color: Color { Color(nsColor: self == .error ? Theme.error : self == .warning ? Theme.warning : Theme.info) }
+    var icon: String {
+        switch self {
+        case .error: return "xmark.octagon.fill"
+        case .warning: return "exclamationmark.triangle.fill"
+        case .info: return "info.circle.fill"
+        }
+    }
+}
+
 extension Speaker {
     var displayName: String { name.isEmpty ? "ID \(objectID)" : name }
 }
 
-/// Scene info, live routing warnings and the speaker table (selection shared with the 3D view).
+/// Scene summary, live routing warnings and the speaker table (selection shared with the 3D view).
 /// Only the leaf views that show levels observe `audio`, so a 1000-row table is not
 /// re-diffed at 30 Hz.
 struct RoutingPanel: View {
@@ -61,16 +74,21 @@ struct RoutingPanel: View {
     @State private var soundingOnly = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sceneInfo
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            if sceneModel.path != nil { sceneInfo }
             LiveIssues(sceneModel: sceneModel, audio: audio, levelOverride: levelOverride, selectedChannel: $selectedChannel)
             Divider()
-            HStack {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                 Text("Speakers").font(Theme.Fonts.heading)
+                Text("\(sceneModel.speakers.count)").font(Theme.Fonts.number).foregroundStyle(.secondary)
                 Spacer()
                 Toggle("Sounding only", isOn: $soundingOnly)
+                    .controlSize(.small)
+                    .help("Only speakers above \(Int(LevelThreshold.signal)) dBFS that can sound")
             }
-            if soundingOnly {
+            if sceneModel.speakers.isEmpty {
+                placeholder(sceneModel.path == nil ? "No layout loaded" : "The layout has no speakers")
+            } else if soundingOnly {
                 SoundingSpeakerTable(sceneModel: sceneModel, audio: audio, levelOverride: levelOverride,
                                      selectedChannel: $selectedChannel, applyGain: applyGain)
             } else {
@@ -78,25 +96,21 @@ struct RoutingPanel: View {
                              levelOverride: levelOverride, selectedChannel: $selectedChannel, applyGain: applyGain)
             }
         }
-        .padding(10)
+        .padding(Theme.Space.m)
     }
 
-    @ViewBuilder
     private var sceneInfo: some View {
-        if let error = sceneModel.loadError {
-            Text("Load error: \(error)").foregroundStyle(Color(nsColor: Theme.error)).textSelection(.enabled)
-        }
         let channels = Set(sceneModel.speakers.map(\.channel))
-        Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 3) {
-            infoRow("File", sceneModel.path.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "Not loaded (Open… or drop a file)")
-            infoRow("Scene name", sceneModel.sceneName.isEmpty ? "—" : sceneModel.sceneName)
-            infoRow("Speakers", "\(sceneModel.speakers.count) on \(channels.count) channels")
-            infoRow("Channels used", channels.isEmpty ? "—" : "\(channels.min()!)–\(channels.max()!)")
+        return Grid(alignment: .leading, horizontalSpacing: Theme.Space.m, verticalSpacing: Theme.Space.xs) {
+            infoRow("Scene", sceneModel.sceneName.isEmpty ? "—" : sceneModel.sceneName)
+            infoRow("Speakers", "\(sceneModel.speakers.count) on \(channels.count) channels"
+                    + (channels.isEmpty ? "" : " (\(channels.min()!)–\(channels.max()!))"))
             if let v = sceneModel.reviewVolume {
-                infoRow("Review volume", String(format: "W %.2f × D %.2f × H %.2f m (context only)", v.x, v.y, v.z))
+                infoRow("Review volume", String(format: "%.2f × %.2f × %.2f m (W × D × H, context only)", v.x, v.y, v.z))
             }
         }
-        .font(.callout)
+        .font(Theme.Fonts.body)
+        .monospacedDigit()
     }
 
     private func infoRow(_ title: String, _ value: String) -> some View {
@@ -107,70 +121,85 @@ struct RoutingPanel: View {
     }
 }
 
-/// Device channel count + warnings; re-renders with every level update.
+private func placeholder(_ text: String) -> some View {
+    Text(text)
+        .font(Theme.Fonts.body)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+}
+
+/// Warnings with a count per severity; re-renders with every level update.
 private struct LiveIssues: View {
     @ObservedObject var sceneModel: SSDSceneModel
     @ObservedObject var audio: AudioLevelsModel
     let levelOverride: [Float]?
     @Binding var selectedChannel: Int?
 
+    private static let rowHeight: CGFloat = 20
+
     var body: some View {
         let deviceChannels = audio.status.available ? Int(audio.status.channelCount) : AudioLevelsModel.channelCount
         let issues = RoutingIssue.check(speakers: sceneModel.speakers, parserWarnings: sceneModel.warnings,
                                         levels: levelOverride ?? audio.levels, deviceChannels: deviceChannels)
-        VStack(alignment: .leading, spacing: 4) {
-            Text(audio.status.available ? "Device: \(deviceChannels) channels active" : "Device: driver not connected (checking against \(deviceChannels) channels)")
-                .font(.callout).foregroundStyle(.secondary)
-            Divider()
-            HStack {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            HStack(spacing: Theme.Space.s) {
                 Text("Warnings").font(Theme.Fonts.heading)
-                Text("\(issues.count)")
-                    .font(.caption.bold().monospacedDigit())
-                    .padding(.horizontal, 7).padding(.vertical, 1)
-                    .background(Capsule().fill(issues.first.map { color($0.severity) } ?? .green))
-                    .foregroundStyle(.white)
-            }
-            if issues.isEmpty {
-                Text("No issues").foregroundStyle(.secondary).font(.callout)
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 3) {
-                        ForEach(issues) { issue in
-                            Button { if let ch = issue.channel { selectedChannel = ch } } label: {
-                                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                    Image(systemName: icon(issue.severity)).foregroundStyle(color(issue.severity))
-                                    Text(issue.text).lineLimit(1).truncationMode(.middle)
-                                    Spacer(minLength: 0)
-                                }
-                                .frame(height: 16)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .font(.callout)
-                            .help(issue.text)
-                        }
+                ForEach(RoutingIssue.Severity.allCases, id: \.self) { severity in
+                    let count = issues.filter { $0.severity == severity }.count
+                    if count > 0 {
+                        Label("\(count)", systemImage: severity.icon)
+                            .font(Theme.Fonts.smallNumber.bold())
+                            .foregroundStyle(severity.color)
+                            .padding(.horizontal, 6).padding(.vertical, 1)
+                            .background(severity.color.opacity(0.15), in: Capsule())
                     }
                 }
-                .frame(height: CGFloat(min(issues.count, 8)) * 19)
+            }
+            if !audio.status.available && levelOverride == nil {
+                Text("Driver not connected: checking against \(deviceChannels) channels")
+                    .font(Theme.Fonts.caption).foregroundStyle(Color(nsColor: Theme.warning))
+            }
+            if issues.isEmpty {
+                Label("No routing problems", systemImage: "checkmark.circle.fill")
+                    .font(Theme.Fonts.body)
+                    .foregroundStyle(.secondary)
+                    .frame(height: Self.rowHeight)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(issues) { row($0) }
+                    }
+                }
+                .frame(height: CGFloat(min(issues.count, 6)) * Self.rowHeight)
             }
         }
     }
 
-    private func color(_ s: RoutingIssue.Severity) -> Color {
-        Color(nsColor: s == .error ? Theme.error : s == .warning ? Theme.warning : Theme.info)
-    }
-
-    private func icon(_ s: RoutingIssue.Severity) -> String {
-        switch s {
-        case .error: return "xmark.octagon.fill"
-        case .warning: return "exclamationmark.triangle.fill"
-        case .info: return "info.circle.fill"
+    private func row(_ issue: RoutingIssue) -> some View {
+        Button { if let ch = issue.channel { selectedChannel = ch } } label: {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                Image(systemName: issue.severity.icon).foregroundStyle(issue.severity.color)
+                Text(issue.channel.map { "Ch \($0)" } ?? "File")
+                    .font(Theme.Fonts.number)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 52, alignment: .leading)
+                Text(issue.text).lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: 0)
+            }
+            .font(Theme.Fonts.body)
+            .padding(.horizontal, Theme.Space.xs)
+            .frame(height: Self.rowHeight)
+            .background(issue.channel != nil && issue.channel == selectedChannel ? Color(nsColor: Theme.selection).opacity(0.18) : .clear,
+                        in: RoundedRectangle(cornerRadius: 4))
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .help(issue.channel.map { "Ch \($0): \(issue.text)" } ?? issue.text)
     }
 }
 
 /// The "Sounding only" variant: the row set itself depends on levels, so this one observes.
-/// With Apply SSD gain, "sounding" means input + Gain above the threshold and not muted.
+/// With Apply SSD gain, "sounding" means input + Gain above the threshold on a speaker that can sound.
 private struct SoundingSpeakerTable: View {
     @ObservedObject var sceneModel: SSDSceneModel
     @ObservedObject var audio: AudioLevelsModel
@@ -180,11 +209,12 @@ private struct SoundingSpeakerTable: View {
 
     var body: some View {
         let levels = levelOverride ?? audio.levels
-        SpeakerTable(rows: sceneModel.speakers.filter {
-                         $0.db(levels, applyGain: applyGain) > LevelThreshold.signal && !(applyGain && $0.mute)
-                     },
-                     all: sceneModel.speakers, audio: audio, levelOverride: levelOverride,
+        let rows = sceneModel.speakers.filter {
+            $0.db(levels, applyGain: applyGain) > LevelThreshold.signal && !(applyGain && $0.silent)
+        }
+        SpeakerTable(rows: rows, all: sceneModel.speakers, audio: audio, levelOverride: levelOverride,
                      selectedChannel: $selectedChannel, applyGain: applyGain)
+            .overlay { if rows.isEmpty { placeholder("No speaker is sounding") } }
     }
 }
 
@@ -205,30 +235,44 @@ private struct SpeakerTable: View {
                     ?? all.first { ids.contains($0.id) }
                 selectedChannel = picked?.channel
             })
-        Table(rows, selection: selection) {
+        let table = Table(rows, selection: selection) {
             // Levels sit next to Name so they stay visible when the panel is narrow. The bar is drawn
             // in the column that drives the 3D view (Post-gain with Apply SSD gain, else Level).
-            TableColumn("Ch") { Text("\($0.channel)").monospacedDigit() }.width(28)
-            TableColumn("Name") { Text($0.name) }.width(min: 36, ideal: 56)
-            TableColumn("Level (dBFS)") {
+            TableColumn("Ch") { number("\($0.channel)", dim: $0.silent) }.width(32)
+            TableColumn("Name") { Text($0.name).foregroundStyle($0.silent ? .secondary : .primary) }
+                .width(min: 40, ideal: 64)
+            TableColumn("Level dBFS") {
                 LevelCell(audio: audio, levelOverride: levelOverride, speaker: $0, postGain: false, showsBar: !applyGain)
-            }.width(96)
+            }.width(90)
             TableColumn("Post-gain") {
                 LevelCell(audio: audio, levelOverride: levelOverride, speaker: $0, postGain: true, showsBar: applyGain)
-            }.width(96)
-            TableColumn("ID") { Text($0.objectID) }.width(min: 20, ideal: 28)
-            TableColumn("x, y, z (m)") { s in
-                Text(String(format: "%.2f, %.2f, %.2f", s.position.x, s.position.y, s.position.z)).monospacedDigit()
-            }.width(min: 90, ideal: 116)
-            TableColumn("Gain") { Text(String(format: "%.1f", $0.gainDb)).monospacedDigit() }.width(40)
-            TableColumn("Delay") { Text(String(format: "%.1f", $0.delayMs)).monospacedDigit() }.width(40)
-            TableColumn("Mute") { Text($0.mute ? "M" : "").bold().foregroundStyle(Color(nsColor: Theme.inactive)) }.width(36)
-            TableColumn("En") { Text($0.active ? "1" : "0").foregroundStyle(Color(nsColor: $0.active ? .secondaryLabelColor : Theme.inactive)) }.width(20)
+            }.width(90)
+            TableColumn("Gain dB") { number(String(format: "%.1f", $0.gainDb), dim: $0.gainDb == 0) }.width(52)
+            TableColumn("Delay ms") { number(String(format: "%.1f", $0.delayMs), dim: $0.delayMs == 0) }.width(58)
+            TableColumn("ID") { Text($0.objectID).foregroundStyle(.secondary) }.width(min: 24, ideal: 36)
+            TableColumn("x, y, z m") { s in
+                number(String(format: "%.2f, %.2f, %.2f", s.position.x, s.position.y, s.position.z), dim: false)
+            }.width(min: 100, ideal: 124)
         }
+        if #available(macOS 14.0, *) {
+            table.alternatingRowBackgrounds(.disabled)   // no striped empty rows below a short list
+        } else {
+            table
+        }
+    }
+
+    /// Right-aligned digits so decimal points line up.
+    private func number(_ text: String, dim: Bool) -> some View {
+        Text(text)
+            .monospacedDigit()
+            .lineLimit(1)
+            .foregroundStyle(dim ? .secondary : .primary)
+            .frame(maxWidth: .infinity, alignment: .trailing)
     }
 }
 
-/// Channel level (dBFS) or, with `postGain`, channel level + SPEAKER Gain ("muted" for muted speakers).
+/// Channel level (dBFS) or, with `postGain`, channel level + SPEAKER Gain ("Muted" / "Off" for
+/// speakers that cannot sound): the value, then its bar.
 private struct LevelCell: View {
     @ObservedObject var audio: AudioLevelsModel
     let levelOverride: [Float]?
@@ -239,19 +283,21 @@ private struct LevelCell: View {
     var body: some View {
         let levels = levelOverride ?? audio.levels
         let db = speaker.db(levels, applyGain: postGain)
-        HStack(spacing: 5) {
-            if postGain && speaker.mute {
-                Text("muted").font(.caption).foregroundStyle(.secondary)
+        HStack(spacing: Theme.Space.xs + 2) {
+            if postGain && speaker.silent {
+                Text(speaker.mute ? "Muted" : "Off").font(Theme.Fonts.caption).foregroundStyle(.secondary)
+                Spacer(minLength: 0)
             } else {
+                Text(channelDb(levels, speaker.channel) <= -120 ? "-\u{221E}" : String(format: "%.1f", db))
+                    .font(Theme.Fonts.smallNumber)
+                    .foregroundStyle(db > LevelThreshold.signal ? Color.primary : Color.secondary)
+                    .frame(width: 36, alignment: .trailing)
                 ZStack(alignment: .leading) {
                     Rectangle().fill(Color.secondary.opacity(0.2))
-                    Rectangle().fill(Color(nsColor: levelColor(db))).frame(width: 44 * levelAmount(db))
+                    Rectangle().fill(Color(nsColor: levelColor(db))).frame(width: 36 * levelAmount(db))
                 }
-                .frame(width: 44, height: 7)
+                .frame(width: 36, height: 7)
                 .opacity(showsBar ? 1 : 0)
-                Text(channelDb(levels, speaker.channel) <= -120 ? "-inf" : String(format: "%.1f", db))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(db > LevelThreshold.signal ? Color.primary : Color.secondary)
             }
         }
     }
