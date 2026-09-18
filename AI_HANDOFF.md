@@ -8,7 +8,7 @@
 
 - Overall: `IN_PROGRESS` — v0.2.0 is released and working on the author's machine; the roadmap in `TODO.md` is open.
 - Evidence freshness: `current` as of the capture time (commit `9435351`, tag `v0.2.0`).
-- Safe continuation: `yes` — the checkout is clean; `main` is ahead of `origin/main` by the unpushed FIL-v1 example and screenshot commits (see Change Log). Anything that restarts `coreaudiod` or publishes needs the user's approval (see Safety Boundaries).
+- Safe continuation: `yes` — the checkout is clean and `main` equals `origin/main` (check `git status -sb`). Anything that restarts `coreaudiod` or publishes needs the user's approval (see Safety Boundaries).
 
 ## Read First
 
@@ -38,7 +38,7 @@ Start by checking the real checkout, branch/worktree, and dirty state. Do not as
 
 ## Current State
 
-- `[VERIFIED]` Release `v0.2.0` = `9435351`; later commits on `main` are docs, the FIL-v1 example and screenshots only, and the last two are not pushed (check `git status -sb`); tags `v0.1.0`, `v0.2.0` exist locally and on GitHub. The repository is public (MIT).
+- `[VERIFIED]` Release `v0.2.0` = `9435351`; later commits on `main` are docs, the FIL-v1 example and screenshots only, pushed on 2026-09-18 with the user's approval; tags `v0.1.0`, `v0.2.0` exist locally and on GitHub. The repository is public (MIT).
 - `[VERIFIED]` Signal path works end to end on the author's Mac: Ableton Live → driver → shared memory → app. Measured shm update rate ≈ 94/s at 48 kHz / 512 frames (48000 / 512 = 93.75).
 - `[VERIFIED]` The driver runs in coreaudiod's helper process `Core Audio Driver (VirtualAudioInterfaceDriver.driver)`. ON/OFF/Update copies or removes the bundle in `/Library/Audio/Plug-Ins/HAL` and restarts `coreaudiod`; the app compares `VAIDriverSourceHash` (stamped by `HALPlugin/Makefile`) to decide "outdated".
 - `[VERIFIED]` On the author's machine (many third-party audio drivers) `coreaudiod` stayed at ~100% CPU and unresponsive for ~2 min 20 s after the installer restarted it. CoreAudio lookups in the app were moved off the main thread because of this.
@@ -122,4 +122,4 @@ Do not treat the conversation summary as a substitute for this document. Do not 
 | Timestamp | Agent / session label | Change | Evidence |
 | --- | --- | --- | --- |
 | `2026-09-18` | `Claude Code` | initial capture after the v0.2.0 release | `make -C Tools check`, `make -C Tools harness`, `gh release view v0.2.0` |
-| `2026-09-18` | `Claude Code` | added `Examples/FIL-v1.sscene` (assumed speaker patch), README screenshots retaken from it, screenshot recipe in `AGENTS.md`; not pushed | `make -C Tools check` → `ssdcheck OK`; docshot PNGs inspected |
+| `2026-09-18` | `Claude Code` | added `Examples/FIL-v1.sscene` (assumed speaker patch), README screenshots retaken from it, screenshot recipe in `AGENTS.md`; pushed to `origin/main` on the user's request | `make -C Tools check` → `ssdcheck OK`; docshot PNGs inspected |
