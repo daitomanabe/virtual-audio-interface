@@ -37,6 +37,7 @@ struct ContentView: View {
         let levelOverride = docshot ? DocShot.syntheticLevels(for: sceneModel.speakers) : nil
         VStack(spacing: 0) {
             topBar
+            TestSignalBar(speakers: sceneModel.speakers, selectedChannel: $selectedChannel)
             TabView(selection: $tab) {
                 HSplitView {
                     SpeakerSceneView(sceneModel: sceneModel, audio: audioLevels, levelOverride: levelOverride,

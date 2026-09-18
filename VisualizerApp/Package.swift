@@ -7,9 +7,10 @@ let package = Package(
     targets: [
         .target(name: "SSDBridge", cxxSettings: [.headerSearchPath("include")]),
         .target(name: "AudioBridge"),
+        .target(name: "TestSignalDSP"),
         .executableTarget(
             name: "VisualizerApp",
-            dependencies: ["SSDBridge", "AudioBridge"]
+            dependencies: ["SSDBridge", "AudioBridge", "TestSignalDSP"]
         ),
     ],
     cxxLanguageStandard: .cxx17
