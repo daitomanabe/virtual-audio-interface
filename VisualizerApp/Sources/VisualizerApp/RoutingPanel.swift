@@ -84,7 +84,7 @@ struct RoutingPanel: View {
     @ViewBuilder
     private var sceneInfo: some View {
         if let error = sceneModel.loadError {
-            Text("読込エラー: \(error)").foregroundStyle(.red).textSelection(.enabled)
+            Text("読込エラー: \(error)").foregroundStyle(Color(nsColor: Theme.error)).textSelection(.enabled)
         }
         let channels = Set(sceneModel.speakers.map(\.channel))
         Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 3) {
@@ -157,7 +157,7 @@ private struct LiveIssues: View {
     }
 
     private func color(_ s: RoutingIssue.Severity) -> Color {
-        switch s { case .error: return .red; case .warning: return .orange; case .info: return .blue }
+        Color(nsColor: s == .error ? Theme.error : s == .warning ? Theme.warning : Theme.info)
     }
 
     private func icon(_ s: RoutingIssue.Severity) -> String {
@@ -222,8 +222,8 @@ private struct SpeakerTable: View {
             }.width(min: 90, ideal: 116)
             TableColumn("Gain") { Text(String(format: "%.1f", $0.gainDb)).monospacedDigit() }.width(40)
             TableColumn("Delay") { Text(String(format: "%.1f", $0.delayMs)).monospacedDigit() }.width(40)
-            TableColumn("Mute") { Text($0.mute ? "M" : "").bold().foregroundStyle(.red) }.width(36)
-            TableColumn("En") { Text($0.active ? "1" : "0").foregroundStyle($0.active ? Color.secondary : Color.orange) }.width(20)
+            TableColumn("Mute") { Text($0.mute ? "M" : "").bold().foregroundStyle(Color(nsColor: Theme.inactive)) }.width(36)
+            TableColumn("En") { Text($0.active ? "1" : "0").foregroundStyle(Color(nsColor: $0.active ? .secondaryLabelColor : Theme.inactive)) }.width(20)
         }
     }
 }
@@ -244,7 +244,7 @@ private struct LevelCell: View {
                 Text("muted").font(.caption).foregroundStyle(.secondary)
             } else {
                 ZStack(alignment: .leading) {
-                    Rectangle().fill(Color.gray.opacity(0.25))
+                    Rectangle().fill(Color.secondary.opacity(0.2))
                     Rectangle().fill(Color(nsColor: levelColor(db))).frame(width: 44 * levelAmount(db))
                 }
                 .frame(width: 44, height: 7)

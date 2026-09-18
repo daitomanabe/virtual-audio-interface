@@ -156,6 +156,8 @@ struct LevelMeterGridView: View {
                     .padding(.vertical, sections.first?.header != nil ? 8 : 0)
                 }
             }
+            .background(Color(nsColor: Theme.canvas))
+            .environment(\.colorScheme, .dark)     // meters stay on the dark canvas in light mode too
         }
     }
 
@@ -165,7 +167,7 @@ struct LevelMeterGridView: View {
         let height = CGFloat(rows) * Self.rowHeight
         VStack(alignment: .leading, spacing: 2) {
             if let header = section.header {
-                Text(header).font(.caption.bold()).foregroundStyle(.secondary).padding(.horizontal, 8)
+                Text(header).font(Theme.Fonts.caption.bold()).foregroundStyle(.secondary).padding(.horizontal, Theme.Space.s)
             }
             Canvas { context, size in
                 draw(context: context, size: size, section: section, columns: columns, meterWidth: meterWidth)
@@ -234,18 +236,18 @@ struct LevelMeterGridView: View {
         // Clip LED (top, latched).
         let ledRect = CGRect(x: meterRect.midX - Self.ledSize / 2, y: meterRect.minY,
                               width: Self.ledSize, height: Self.ledSize)
-        layer.fill(Path(ellipseIn: ledRect), with: .color(isClipped ? .red : Color.gray.opacity(0.35)))
+        layer.fill(Path(ellipseIn: ledRect), with: .color(isClipped ? Color(nsColor: Theme.levelRed) : Color(nsColor: Theme.canvasLine)))
 
         // "未割当" marker.
         if isUnassigned {
-            layer.draw(Text("未割当").font(.system(size: 7)).foregroundColor(.orange),
+            layer.draw(Text("未割当").font(Theme.Fonts.meterBadge).foregroundColor(Color(nsColor: Theme.error)),
                        at: CGPoint(x: meterRect.midX, y: meterRect.minY + Self.ledSize + 6), anchor: .top)
         }
 
         // Mute / disabled badge (Layout mode's SSD groups only).
         if muted || disabled {
             let badge = [muted ? "M" : nil, disabled ? "off" : nil].compactMap { $0 }.joined(separator: ",")
-            layer.draw(Text(badge).font(.system(size: 7, weight: .bold)).foregroundColor(muted ? .red : .orange),
+            layer.draw(Text(badge).font(Theme.Fonts.meterBadge).foregroundColor(Color(nsColor: Theme.inactive)),
                        at: CGPoint(x: meterRect.maxX - 1, y: meterRect.minY), anchor: .topTrailing)
         }
 
@@ -261,7 +263,7 @@ struct LevelMeterGridView: View {
             return barRect.maxY - t * barRect.height
         }
 
-        layer.fill(Path(barRect), with: .color(Color.gray.opacity(0.15)))
+        layer.fill(Path(barRect), with: .color(Color(nsColor: Theme.canvasTrack)))
 
         // dB gridlines.
         for db in Self.gridlines {
@@ -269,17 +271,17 @@ struct LevelMeterGridView: View {
             var p = Path()
             p.move(to: CGPoint(x: barRect.minX, y: gy))
             p.addLine(to: CGPoint(x: barRect.maxX, y: gy))
-            layer.stroke(p, with: .color(Color.secondary.opacity(0.3)), lineWidth: 0.5)
+            layer.stroke(p, with: .color(Color(nsColor: Theme.canvasLine)), lineWidth: 0.5)
         }
 
-        let barColor = color(forDB: rmsDB)
+        let barColor = Color(nsColor: levelZoneColor(rmsDB))
         // RMS: wide bar.
         let rmsRect = CGRect(x: barRect.minX + barRect.width * 0.15, y: y(forDB: rmsDB),
                               width: barRect.width * 0.7, height: barRect.maxY - y(forDB: rmsDB))
         layer.fill(Path(rmsRect), with: .color(barColor.opacity(0.85)))
 
         // Peak: thin, brighter bar on top of RMS.
-        let peakColor = color(forDB: peakDB)
+        let peakColor = Color(nsColor: levelZoneColor(peakDB))
         let peakRect = CGRect(x: barRect.minX + barRect.width * 0.35, y: y(forDB: peakDB),
                                width: barRect.width * 0.3, height: barRect.maxY - y(forDB: peakDB))
         layer.fill(Path(peakRect), with: .color(peakColor.opacity(0.95)))
@@ -290,36 +292,31 @@ struct LevelMeterGridView: View {
             var p = Path()
             p.move(to: CGPoint(x: barRect.minX, y: hy))
             p.addLine(to: CGPoint(x: barRect.maxX, y: hy))
-            layer.stroke(p, with: .color(.primary), lineWidth: 1.5)
+            layer.stroke(p, with: .color(Color(nsColor: Theme.canvasText)), lineWidth: 1.5)
         }
 
-        layer.stroke(Path(barRect), with: .color(Color.secondary.opacity(0.4)), lineWidth: 0.5)
+        layer.stroke(Path(barRect), with: .color(Color(nsColor: Theme.canvasLine)), lineWidth: 0.5)
 
         // Channel number + peak dB.
         let labelY = barRect.maxY + 2
-        layer.draw(Text("\(ch)").font(.system(size: 9, design: .monospaced)).foregroundColor(.secondary),
+        layer.draw(Text("\(ch)").font(Theme.Fonts.meterChannel).foregroundColor(Color(nsColor: Theme.canvasText)),
                    at: CGPoint(x: meterRect.midX, y: labelY), anchor: .top)
         let dbText = peakDB <= AudioLevelsModel.dbFloor ? "-\u{221E}" : String(format: "%.0f", peakDB)
-        layer.draw(Text(dbText).font(.system(size: 8, design: .monospaced)).foregroundColor(.secondary),
+        layer.draw(Text(dbText).font(Theme.Fonts.meterValue).foregroundColor(Color(nsColor: Theme.canvasTextDim)),
                    at: CGPoint(x: meterRect.midX, y: labelY + 10), anchor: .top)
         if let label = labels[ch] {
             let truncated = label.count > 8 ? label.prefix(7) + "\u{2026}" : Substring(label)
-            layer.draw(Text(String(truncated)).font(.system(size: 7)).foregroundColor(.secondary),
+            layer.draw(Text(String(truncated)).font(Theme.Fonts.meterValue).foregroundColor(Color(nsColor: Theme.canvasTextDim)),
                        at: CGPoint(x: meterRect.midX, y: labelY + 20), anchor: .top)
         }
 
         // Selection / unassigned borders drawn last so they sit on top.
         if isUnassigned {
-            layer.stroke(Path(meterRect), with: .color(.orange), lineWidth: 1.5)
+            layer.stroke(Path(meterRect), with: .color(Color(nsColor: Theme.error)), lineWidth: 1.5)
         }
         if isSelected {
-            layer.stroke(Path(meterRect.insetBy(dx: -1, dy: -1)), with: .color(.accentColor), lineWidth: 2)
+            layer.stroke(Path(meterRect.insetBy(dx: -1, dy: -1)), with: .color(Color(nsColor: Theme.selection)), lineWidth: 2)
         }
     }
 
-    private func color(forDB db: Float) -> Color {
-        if db > -3 { return .red }
-        if db > -12 { return .yellow }
-        return .green
-    }
 }

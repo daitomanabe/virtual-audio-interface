@@ -83,7 +83,7 @@ struct TestSignalBar: View {
     @ViewBuilder
     private var status: some View {
         if let failure = engine.failure {
-            Text(failure).foregroundStyle(.red)
+            Text(failure).foregroundStyle(Color(nsColor: Theme.error))
         } else if let device = engine.device {
             if !engine.playing {
                 Text("\(device.channels) ch · \(Int(device.sampleRate)) Hz").foregroundStyle(.secondary)
@@ -93,14 +93,14 @@ struct TestSignalBar: View {
                 let names = speakers.filter { $0.channel == channel }.map(\.name).joined(separator: ", ")
                 Text("Ch \(channel) · \(names.isEmpty ? "no speaker" : names)").fontWeight(.semibold)
             } else if engine.target == .selected, let selected = selectedChannel {
-                Text("Ch \(selected) is outside the device's \(device.channels) channels").foregroundStyle(.orange)
+                Text("Ch \(selected) is outside the device's \(device.channels) channels").foregroundStyle(Color(nsColor: Theme.warning))
             } else {
                 Text(engine.target == .speakers ? "No speakers to step through" : "Select a channel or speaker")
                     .foregroundStyle(.secondary)
             }
         } else {
             Text(engine.playing ? "Waiting for the virtual device…" : "Virtual device not found. Turn the driver ON.")
-                .foregroundStyle(.orange)
+                .foregroundStyle(Color(nsColor: Theme.warning))
         }
     }
 }

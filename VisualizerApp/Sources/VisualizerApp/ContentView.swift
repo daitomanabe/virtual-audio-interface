@@ -64,6 +64,7 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 1000, minHeight: 640)
+        .tint(Color(nsColor: Theme.accent))
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             guard let provider = providers.first else { return false }
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
@@ -145,7 +146,7 @@ private struct DriverStatusBar: View {
     var body: some View {
         let s = driver.snapshot
         HStack(spacing: 8) {
-            Circle().fill(s.isOn && !s.outdated ? .green : s.isOff ? .gray : .orange).frame(width: 8, height: 8)
+            Circle().fill(Color(nsColor: s.isOn && !s.outdated ? Theme.levelGreen : s.isOff ? Theme.inactive : Theme.warning)).frame(width: 8, height: 8)
             if driver.busy { ProgressView().controlSize(.small) }
             Button(s.outdated ? "Driver Update" : "Driver ON") { driver.turnOn() }
                 .disabled(driver.busy || (s.isOn && !s.outdated) || driver.bundledDriver == nil)
