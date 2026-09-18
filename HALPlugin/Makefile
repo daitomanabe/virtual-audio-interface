@@ -22,6 +22,8 @@ $(BUNDLE)/Contents/MacOS/VirtualAudioInterfaceDriver: src/VirtualAudioDevicePlug
 	@mkdir -p $(BUNDLE)/Contents/MacOS
 	$(CXX) $(CXXFLAGS) $(FRAMEWORKS) -o $@ src/VirtualAudioDevicePlugin.cpp
 	cp Info.plist $(BUNDLE)/Contents/Info.plist
+	# Source hash lets the app tell whether an installed driver is different code.
+	plutil -replace VAIDriverSourceHash -string $$(cat src/*.cpp ../Shared/MeterShm.h Info.plist Makefile | shasum -a 256 | cut -c1-16) $(BUNDLE)/Contents/Info.plist
 
 clean:
 	rm -rf build

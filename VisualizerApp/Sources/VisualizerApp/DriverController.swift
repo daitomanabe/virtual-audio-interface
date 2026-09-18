@@ -13,7 +13,7 @@ final class DriverController: ObservableObject {
         var installed = false
         var helperPIDs: [Int32] = []
         var devicePresent = false
-        var outdated = false   // installed driver binary differs from the one bundled in this app
+        var outdated = false   // installed driver was built from different source than the bundled one
         var isOn: Bool { installed && !helperPIDs.isEmpty && devicePresent }
         var isOff: Bool { !installed && helperPIDs.isEmpty && !devicePresent }
     }
@@ -35,12 +35,13 @@ final class DriverController: ObservableObject {
     func refresh() { snapshot = Self.probe() }
 
     nonisolated static func probe() -> Snapshot {
-        let exe = "/Contents/MacOS/VirtualAudioInterfaceDriver"
         let installed = FileManager.default.fileExists(atPath: halPath)
         let bundled = Bundle.main.url(forResource: "VirtualAudioInterfaceDriver", withExtension: "driver")
-        let outdated = installed && bundled.map {
-            !FileManager.default.contentsEqual(atPath: halPath + exe, andPath: $0.path + exe)
-        } ?? false
+        func sourceHash(_ bundlePath: String) -> String? {
+            (NSDictionary(contentsOfFile: bundlePath + "/Contents/Info.plist")?["VAIDriverSourceHash"]) as? String
+        }
+        // A driver installed before source hashes existed has none, so it counts as outdated.
+        let outdated = installed && bundled.map { sourceHash(halPath) != sourceHash($0.path) } ?? false
         return Snapshot(installed: installed, helperPIDs: helperPIDs(), devicePresent: devicePresent(), outdated: outdated)
     }
 
