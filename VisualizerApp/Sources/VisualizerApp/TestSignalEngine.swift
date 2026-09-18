@@ -78,7 +78,7 @@ final class TestSignalEngine: ObservableObject {
         systemListener = listener
         terminateObserver = NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification,
                                                                    object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.stop(fade: false) }
+            MainActor.assumeIsolated { self?.stop(fade: false) } // synchronously: the process exits right after
         }
         rebind(force: true)
     }
@@ -116,6 +116,7 @@ final class TestSignalEngine: ObservableObject {
     func stop(fade: Bool = true) {
         guard playing else { return }
         playing = false
+        failure = nil
         activity.map(ProcessInfo.processInfo.endActivity)
         activity = nil
         retarget()
