@@ -30,21 +30,10 @@ struct LevelMeterGridView: View {
     var levelOverride: [Float]?      // --docshot synthetic levels
     var selectedChannel: Binding<Int?>
 
-    @State private var mode: MeterMode
+    /// Set by the picker in the top bar (ContentView) and by DocShot.
+    @AppStorage(LevelMeterGridView.modeKey) private var mode = MeterMode.all
 
-    static let modeKey = "meterGridMode"     // shared with DocShot for the layout screenshot
-
-    init(model: AudioLevelsModel,
-         speakers: [Speaker] = [],
-         levelOverride: [Float]? = nil,
-         selectedChannel: Binding<Int?> = .constant(nil)) {
-        self._model = ObservedObject(wrappedValue: model)
-        self.speakers = speakers
-        self.levelOverride = levelOverride
-        self.selectedChannel = selectedChannel
-        let saved = UserDefaults.standard.string(forKey: Self.modeKey).flatMap(MeterMode.init(rawValue:)) ?? .all
-        _mode = State(initialValue: saved)
-    }
+    static let modeKey = "meterGridMode"
 
     private static let minMeterWidth: CGFloat = 36
     private static let rowHeight: CGFloat = 116
@@ -70,17 +59,6 @@ struct LevelMeterGridView: View {
     /// Channels where no speaker can sound (every speaker on it is muted or disabled).
     private var silentChannels: Set<Int> {
         Set(Dictionary(grouping: speakers, by: \.channel).filter { $0.value.allSatisfy { $0.mute || !$0.active } }.keys)
-    }
-
-    /// The selection shown in the mode picker: forced to `.all` (and disabled)
-    /// when no scene is loaded, regardless of the persisted preference.
-    private var modeBinding: Binding<MeterMode> {
-        Binding(
-            get: { speakers.isEmpty ? .all : mode },
-            set: { newValue in
-                mode = newValue
-                UserDefaults.standard.set(newValue.rawValue, forKey: Self.modeKey)
-            })
     }
 
     /// Speakers grouped into height layers, highest first: sort by z, start a
@@ -127,23 +105,6 @@ struct LevelMeterGridView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Button("Reset Clips") { model.resetClips() }
-                Spacer()
-                Picker("Mode", selection: modeBinding) {
-                    ForEach(MeterMode.allCases) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
-                .disabled(speakers.isEmpty)
-                .help(speakers.isEmpty ? "Load a .sscene to enable Layout mode" : "")
-                Spacer()
-                Text("\(model.status.available ? Int(model.status.channelCount) : AudioLevelsModel.channelCount) ch")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            .padding(8)
-
             GeometryReader { geo in
                 let columns = max(1, Int(geo.size.width / Self.minMeterWidth))
                 let meterWidth = geo.size.width / CGFloat(columns)

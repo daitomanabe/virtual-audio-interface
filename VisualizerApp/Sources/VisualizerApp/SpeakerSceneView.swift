@@ -7,7 +7,7 @@ enum CameraPreset: String, CaseIterable, Identifiable {
 }
 
 enum LabelMode: String, CaseIterable, Identifiable {
-    case number = "Ch", numberAndName = "Ch + Name"
+    case number = "Channel", numberAndName = "Channel + name"
     var id: Self { self }
 }
 
@@ -448,36 +448,23 @@ struct SpeakerSceneView: NSViewRepresentable {
     }
 }
 
-/// Load state over the 3D view: the parse error (the last valid scene stays on screen while a
-/// half-saved edit fails) and when the file was last read.
+/// The parse error over the 3D view (the last valid scene stays on screen while a half-saved edit
+/// fails); the top bar shows the short form on every tab.
 struct SceneLoadStatus: View {
     @ObservedObject var sceneModel: SSDSceneModel
 
-    private static let time: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm:ss"
-        return f
-    }()
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if let error = sceneModel.loadError {
-                Label(sceneModel.showsLastValidScene ? "Parse error, showing the last valid version: \(error)"
-                                                     : "Could not load: \(error)",
-                      systemImage: "exclamationmark.triangle.fill")
-                    .font(Theme.Fonts.body)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xs)
-                    .background(Color(nsColor: Theme.error).opacity(0.9), in: RoundedRectangle(cornerRadius: Theme.radius))
-            }
-            if let date = sceneModel.loadedAt {
-                Text("\(sceneModel.reloaded ? "Reloaded" : "Loaded") \(Self.time.string(from: date))")
-                    .font(Theme.Fonts.smallNumber)
-                    .foregroundStyle(Color(nsColor: Theme.canvasTextDim))
-            }
+        if let error = sceneModel.loadError {
+            Label(sceneModel.showsLastValidScene ? "Parse error, showing the last valid version: \(error)"
+                                                 : "Could not load: \(error)",
+                  systemImage: "exclamationmark.triangle.fill")
+                .font(Theme.Fonts.body)
+                .foregroundStyle(.white)
+                .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xs)
+                .background(Color(nsColor: Theme.error).opacity(0.9), in: RoundedRectangle(cornerRadius: Theme.radius))
+                .padding(Theme.Space.s)
+                .allowsHitTesting(false)      // clicks go to the speakers underneath
         }
-        .padding(Theme.Space.s)
-        .allowsHitTesting(false)              // clicks go to the speakers underneath
     }
 }
 
