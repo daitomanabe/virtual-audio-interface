@@ -36,6 +36,12 @@ Planned work, roughly in priority order within each section. Contributions welco
 - [ ] Restrict the shared-memory config area (currently writable by any local process)
 - [ ] Privileged helper (SMAppService) so ON/OFF does not ask for a password every time
 
+## Performance
+
+- [ ] Reduce CPU use (currently ~30% visible / ~25% hidden on Apple silicon with 128 channels at 60 Hz):
+      publish only changed meter values, skip SwiftUI updates while the window is occluded, lower the
+      3D update rate when nothing changes
+
 ## Distribution
 
 - [ ] Developer ID signing and notarization for the app, driver and installer
