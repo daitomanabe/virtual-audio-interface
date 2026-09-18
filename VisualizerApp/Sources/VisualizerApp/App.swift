@@ -10,6 +10,9 @@ enum Main {
             print("installed=\(s.installed) helperPIDs=\(s.helperPIDs) devicePresent=\(s.devicePresent) outdated=\(s.outdated) on=\(s.isOn) off=\(s.isOff)")
             exit(0)
         }
+        if let i = args.firstIndex(of: "--test-signal") {
+            TestSignalEngine.runCLI(Array(args[(i + 1)...])) // plays without a window, then exits
+        }
         if let i = args.firstIndex(of: "--docshot") {
             guard i + 1 < args.count else {
                 print("usage: VisualizerApp --docshot <outdir> [scene.sscene]")
