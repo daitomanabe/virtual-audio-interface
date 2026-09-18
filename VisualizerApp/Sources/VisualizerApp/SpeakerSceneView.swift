@@ -94,6 +94,7 @@ struct SpeakerSceneView: NSViewRepresentable {
         var timer: Timer?
         var nodes: [SpeakerNodes] = []
         var objectLabels: [SCNNode] = []
+        var axisNodes: [(axis: SCNNode, label: SCNNode)] = []  // X, Y, Z
         var lastDb: [Float] = []
         var generation = -1
         var framing = -1
@@ -102,6 +103,9 @@ struct SpeakerSceneView: NSViewRepresentable {
         var selected: Int? = -1           // -1 = not applied yet (channels are >= 1)
         var lo = SIMD3<Double>(-1, -1, 0), hi = SIMD3<Double>(1, 1, 1)  // current scene (grid)
         var frameLo = SIMD3<Double>(-1, -1, 0), frameHi = SIMD3<Double>(1, 1, 1) // what the camera framed
+        /// Scale of balls, labels, listener and axes: 1 for a 12 m floor grid, so they keep roughly the
+        /// same size on screen in a small room and in a hall.
+        var glyph: CGFloat = 1
 
         func startTimer() {
             let t = Timer(timeInterval: 1.0 / 30.0, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
@@ -124,6 +128,7 @@ struct SpeakerSceneView: NSViewRepresentable {
             // Widen x/y to whole meters + 1 so the floor grid (and the axes at its corner) are framed too.
             lo = [floor(lo.x) - 1, floor(lo.y) - 1, lo.z]
             hi = [ceil(hi.x) + 1, ceil(hi.y) + 1, hi.z]
+            glyph = CGFloat(min(max(max(hi.x - lo.x, hi.y - lo.y) / 12, 0.6), 4))
 
             content.addChildNode(grid())
             content.addChildNode(axes(at: [lo.x, lo.y, 0]))  // grid corner, clear of speakers
@@ -211,8 +216,9 @@ struct SpeakerSceneView: NSViewRepresentable {
             let anchor = SCNNode()
             anchor.position = scenekit(o.world(o.rect.map { [0, -$0.y / 2, 0] } ?? .zero))
             anchor.constraints = [SCNBillboardConstraint()]
-            let label = textNode(o.name.isEmpty ? o.objectID : o.name, height: Theme.sceneLabelSmall, color: Theme.canvasTextDim)
-            label.position = SCNVector3(0, -0.55, 0)          // clear of a camera glyph pointing down-screen
+            let label = textNode(o.name.isEmpty ? o.objectID : o.name, height: Theme.sceneLabelSmall * glyph,
+                                 color: Theme.canvasTextDim)
+            label.position = SCNVector3(0, -0.55 * glyph, 0)  // clear of a camera glyph pointing down-screen
             anchor.addChildNode(label)
             if !o.active { anchor.opacity = 0.3 }
             objectRoot.addChildNode(anchor)
@@ -222,7 +228,8 @@ struct SpeakerSceneView: NSViewRepresentable {
         private func speakerNodes(_ s: Speaker, index: Int) -> SpeakerNodes {
             let holder = SCNNode()
             holder.position = scenekit(s.position)
-            if !s.active { holder.opacity = 0.3 }      // Enabled=0 (or disabled parent): ghost
+            holder.scale = SCNVector3(glyph, glyph, glyph)
+            if s.silent { holder.opacity = 0.45 }      // Mute or Enabled 0 (or a disabled parent): ghost
             content.addChildNode(holder)
 
             let material = SCNMaterial()
@@ -275,24 +282,48 @@ struct SpeakerSceneView: NSViewRepresentable {
             return lines(segments, color: Theme.canvasLine)
         }
 
+        /// 1 m (× glyph) gizmo with its labels beside the tips (see `showAxes`).
         private func axes(at origin: SIMD3<Double>) -> SCNNode {
             let node = SCNNode()
+            node.position = scenekit(origin)
+            node.scale = SCNVector3(glyph, glyph, glyph)
+            axisNodes = []
             let axes: [(SIMD3<Double>, NSColor, String)] = [
-                ([1, 0, 0], Theme.axisX, "+X 右"), ([0, 1, 0], Theme.axisY, "+Y 前方"), ([0, 0, 1], Theme.axisZ, "+Z 上"),
+                ([1, 0, 0], Theme.axisX, "+X right"), ([0, 1, 0], Theme.axisY, "+Y front"), ([0, 0, 1], Theme.axisZ, "+Z up"),
             ]
             for (direction, color, title) in axes {
-                node.addChildNode(lines([(origin, origin + direction)], color: color))
+                let axis = SCNNode()
+                axis.addChildNode(lines([(.zero, direction)], color: color))
                 let anchor = SCNNode()
-                anchor.position = scenekit(origin + direction * 1.3)
+                anchor.position = scenekit(direction)
                 anchor.constraints = [SCNBillboardConstraint()]
-                anchor.addChildNode(textNode(title, height: 0.2, color: color))
-                node.addChildNode(anchor)
+                let label = textNode(title, height: Theme.sceneLabelSmall, color: color)
+                anchor.addChildNode(label)
+                axis.addChildNode(anchor)
+                node.addChildNode(axis)
+                axisNodes.append((axis, label))
             }
+            showAxes()
             return node
+        }
+
+        /// Hides the axis that points at the camera in an orthographic preset (its label would sit on the
+        /// origin). Labels go to the right of their tips, except Y in perspective: seen from the front left,
+        /// +Y projects just left of +Z, so its label goes left and the two do not collide.
+        private func showAxes() {
+            let hidden: Int? = camera == .side ? 0 : camera == .front ? 1 : camera == .top ? 2 : nil
+            for (i, (axis, label)) in axisNodes.enumerated() {
+                axis.isHidden = i == hidden
+                guard let text = label.geometry else { continue }
+                let (min, max) = text.boundingBox, right = !(i == 1 && camera == .perspective)
+                label.pivot = SCNMatrix4MakeTranslation(right ? min.x : max.x, (min.y + max.y) / 2, 0)
+                label.position = SCNVector3(right ? 0.1 : -0.1, 0, 0)
+            }
         }
 
         private func listener() -> SCNNode {
             let node = SCNNode()
+            node.scale = SCNVector3(glyph, glyph, glyph)
             let disc = SCNNode(geometry: SCNCylinder(radius: 0.3, height: 0.005))
             disc.geometry?.firstMaterial = flat(Theme.canvasText.withAlphaComponent(0.25))
             node.addChildNode(disc)
@@ -330,15 +361,16 @@ struct SpeakerSceneView: NSViewRepresentable {
             let levels = props.levelOverride ?? props.audio.levels
             for (i, n) in nodes.enumerated() {
                 let db = n.speaker.db(levels, applyGain: props.applyGain)
-                let lineOn = props.showLines && !n.speaker.mute && db > LevelThreshold.line
+                let lineOn = props.showLines && !n.speaker.silent && db > LevelThreshold.line
                 if abs(db - lastDb[i]) < 0.25 && n.line.isHidden == !lineOn { continue }
                 lastDb[i] = db
 
                 let color = levelColor(db)
-                if n.speaker.mute {
-                    // Muted: never lit or grown, whatever arrives on the channel. A dim tint (plus the
-                    // red ×) still shows that there is signal.
-                    n.material.diffuse.contents = scaled(color, 0.26)
+                if n.speaker.silent {
+                    // Muted or disabled: never lit or grown, whatever arrives on the channel. Signal that
+                    // arrives anyway tints it with the warning color, like its routing warning.
+                    let signal = channelDb(levels, n.speaker.channel) > LevelThreshold.signal
+                    n.material.diffuse.contents = signal ? Theme.warning : Theme.inactive
                     n.material.emission.contents = NSColor.black
                     n.ball.scale = SCNVector3(1, 1, 1)
                 } else {
@@ -357,6 +389,7 @@ struct SpeakerSceneView: NSViewRepresentable {
 
         func apply(_ preset: CameraPreset) {
             camera = preset
+            showAxes()
             guard let view, let cam = cameraNode.camera else { return }
             frameLo = lo; frameHi = hi
             let center = (lo + hi) / 2
@@ -397,7 +430,7 @@ struct SpeakerSceneView: NSViewRepresentable {
             }
             let size = frameHi - frameLo
             let (w, h) = camera == .top ? (size.x, size.y) : camera == .front ? (size.x, size.z) : (size.y, size.z)
-            cam.orthographicScale = max(h, w / aspect) / 2 + 0.7  // margin for labels above the top row
+            cam.orthographicScale = max(h, w / aspect) / 2 + 0.7 * glyph  // margin for labels above the top row
         }
 
         @objc func clicked(_ gesture: NSClickGestureRecognizer) {
@@ -449,6 +482,9 @@ struct SceneLoadStatus: View {
 }
 
 extension Speaker {
+    /// Muted or disabled (Enabled 0 on it or an ancestor): it cannot sound, so it is never lit.
+    var silent: Bool { mute || !active }
+
     /// Ch + Name label: "9 U1" and, when non-zero, Gain / Delay on a second line ("−1.5 dB · 1.2 ms").
     var longLabel: String {
         var extras: [String] = []

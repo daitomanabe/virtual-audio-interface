@@ -56,7 +56,7 @@ enum Theme {
         static let meterBadge = Font.system(size: 8, weight: .bold)
     }
 
-    /// 3D text: one face; heights in meters for a 10 m scene (SpeakerSceneView scales them with the scene).
+    /// 3D text: one face; heights in meters for a 12 m floor grid (SpeakerSceneView scales them with the scene).
     static let sceneFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
     static let sceneLabel: CGFloat = 0.3
     static let sceneLabelSmall: CGFloat = 0.21
