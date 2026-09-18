@@ -57,6 +57,7 @@ struct RoutingPanel: View {
     let audio: AudioLevelsModel
     let levelOverride: [Float]?
     @Binding var selectedChannel: Int?
+    let applyGain: Bool              // level bars and "sounding" use input + SSD Gain, like the 3D view
     @State private var soundingOnly = false
 
     var body: some View {
@@ -71,10 +72,10 @@ struct RoutingPanel: View {
             }
             if soundingOnly {
                 SoundingSpeakerTable(sceneModel: sceneModel, audio: audio, levelOverride: levelOverride,
-                                     selectedChannel: $selectedChannel)
+                                     selectedChannel: $selectedChannel, applyGain: applyGain)
             } else {
                 SpeakerTable(rows: sceneModel.speakers, all: sceneModel.speakers, audio: audio,
-                             levelOverride: levelOverride, selectedChannel: $selectedChannel)
+                             levelOverride: levelOverride, selectedChannel: $selectedChannel, applyGain: applyGain)
             }
         }
         .padding(10)
@@ -169,17 +170,21 @@ private struct LiveIssues: View {
 }
 
 /// The "発音中のみ" variant: the row set itself depends on levels, so this one observes.
+/// With Apply SSD gain, "sounding" means input + Gain above the threshold and not muted.
 private struct SoundingSpeakerTable: View {
     @ObservedObject var sceneModel: SSDSceneModel
     @ObservedObject var audio: AudioLevelsModel
     let levelOverride: [Float]?
     @Binding var selectedChannel: Int?
+    let applyGain: Bool
 
     var body: some View {
         let levels = levelOverride ?? audio.levels
-        SpeakerTable(rows: sceneModel.speakers.filter { channelDb(levels, $0.channel) > LevelThreshold.signal },
+        SpeakerTable(rows: sceneModel.speakers.filter {
+                         $0.db(levels, applyGain: applyGain) > LevelThreshold.signal && !(applyGain && $0.mute)
+                     },
                      all: sceneModel.speakers, audio: audio, levelOverride: levelOverride,
-                     selectedChannel: $selectedChannel)
+                     selectedChannel: $selectedChannel, applyGain: applyGain)
     }
 }
 
@@ -189,6 +194,7 @@ private struct SpeakerTable: View {
     let audio: AudioLevelsModel
     let levelOverride: [Float]?
     @Binding var selectedChannel: Int?
+    let applyGain: Bool
 
     var body: some View {
         // Table selection is per row; the app-wide selection is a channel (all its speakers).
@@ -200,38 +206,53 @@ private struct SpeakerTable: View {
                 selectedChannel = picked?.channel
             })
         Table(rows, selection: selection) {
-            // Level sits next to Name so it stays visible when the panel is narrow.
+            // Levels sit next to Name so they stay visible when the panel is narrow. The bar is drawn
+            // in the column that drives the 3D view (Post-gain with Apply SSD gain, else Level).
             TableColumn("Ch") { Text("\($0.channel)").monospacedDigit() }.width(28)
             TableColumn("Name") { Text($0.name) }.width(min: 36, ideal: 56)
-            TableColumn("Level (dBFS)") { LevelCell(audio: audio, levelOverride: levelOverride, channel: $0.channel) }.width(96)
+            TableColumn("Level (dBFS)") {
+                LevelCell(audio: audio, levelOverride: levelOverride, speaker: $0, postGain: false, showsBar: !applyGain)
+            }.width(96)
+            TableColumn("Post-gain") {
+                LevelCell(audio: audio, levelOverride: levelOverride, speaker: $0, postGain: true, showsBar: applyGain)
+            }.width(96)
             TableColumn("ID") { Text($0.objectID) }.width(min: 20, ideal: 28)
             TableColumn("x, y, z (m)") { s in
                 Text(String(format: "%.2f, %.2f, %.2f", s.position.x, s.position.y, s.position.z)).monospacedDigit()
             }.width(min: 90, ideal: 116)
-            TableColumn("Gain") { Text(String(format: "%.1f", $0.gainDb)).monospacedDigit() }.width(34)
-            TableColumn("Delay") { Text(String(format: "%.1f", $0.delayMs)).monospacedDigit() }.width(34)
+            TableColumn("Gain") { Text(String(format: "%.1f", $0.gainDb)).monospacedDigit() }.width(40)
+            TableColumn("Delay") { Text(String(format: "%.1f", $0.delayMs)).monospacedDigit() }.width(40)
             TableColumn("Mute") { Text($0.mute ? "M" : "").bold().foregroundStyle(.red) }.width(36)
             TableColumn("En") { Text($0.active ? "1" : "0").foregroundStyle($0.active ? Color.secondary : Color.orange) }.width(20)
         }
     }
 }
 
+/// Channel level (dBFS) or, with `postGain`, channel level + SPEAKER Gain ("muted" for muted speakers).
 private struct LevelCell: View {
     @ObservedObject var audio: AudioLevelsModel
     let levelOverride: [Float]?
-    let channel: Int
+    let speaker: Speaker
+    let postGain: Bool
+    let showsBar: Bool
 
     var body: some View {
-        let db = channelDb(levelOverride ?? audio.levels, channel)
+        let levels = levelOverride ?? audio.levels
+        let db = speaker.db(levels, applyGain: postGain)
         HStack(spacing: 5) {
-            ZStack(alignment: .leading) {
-                Rectangle().fill(Color.gray.opacity(0.25))
-                Rectangle().fill(Color(nsColor: levelColor(db))).frame(width: 44 * levelAmount(db))
+            if postGain && speaker.mute {
+                Text("muted").font(.caption).foregroundStyle(.secondary)
+            } else {
+                ZStack(alignment: .leading) {
+                    Rectangle().fill(Color.gray.opacity(0.25))
+                    Rectangle().fill(Color(nsColor: levelColor(db))).frame(width: 44 * levelAmount(db))
+                }
+                .frame(width: 44, height: 7)
+                .opacity(showsBar ? 1 : 0)
+                Text(channelDb(levels, speaker.channel) <= -120 ? "-inf" : String(format: "%.1f", db))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(db > LevelThreshold.signal ? Color.primary : Color.secondary)
             }
-            .frame(width: 44, height: 7)
-            Text(db <= -120 ? "-inf" : String(format: "%.1f", db))
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(db > LevelThreshold.signal ? Color.primary : Color.secondary)
         }
     }
 }

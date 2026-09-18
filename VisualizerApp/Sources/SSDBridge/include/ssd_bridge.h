@@ -49,6 +49,50 @@ int32_t ssdb_load_scene(const char *path, SSDBSceneInfo *outInfo,
                         char *outWarnings, int32_t warningsCapacity,
                         char *outErrorMessage, int32_t errorMessageCapacity);
 
+// ---- Every OBJECT, with the geometry sections the Monitor tab draws ----
+
+#define SSDB_MAX_OBJECTS 4096
+
+// Row-major 3x4 affine pose: p_world = m[r*4+0..2] . p_local + m[r*4+3] for row r = 0..2.
+typedef struct {
+    double m[12];
+} SSDBMatrix;
+
+// Pose in SSD axes -> SceneKit node transform: B * M * B^-1, where B is the ssdb_to_scenekit
+// rotation. Converts the rotation together with the position (the SSD Euler angles are never
+// reused in SceneKit). Geometry built in SSD-local coordinates and mapped through
+// ssdb_to_scenekit lands where M would put it: node(B p) = B (M p).
+SSDBMatrix ssdb_matrix_to_scenekit(SSDBMatrix ssd);
+
+typedef struct {
+    char objectId[SSDB_TEXT_LEN];
+    char type[SSDB_TEXT_LEN];      // OBJECT Type as written (e.g. "screen", "camera", "truss")
+    char name[SSDB_TEXT_LEN];
+    int32_t parent;                // index of the parent in the output array, -1 for none
+    bool active;                   // own Enabled && all ancestors enabled
+    SSDBMatrix world;              // world pose in SSD axes, parents applied
+    // Rectangles: local X right, Y up, +Z front normal, centered on the origin.
+    bool hasRect;                  // [SCREEN] / [SURFACE] / [LED] row
+    double width, height;          // meters
+    int32_t pixelWidth, pixelHeight; // [LED] only, 0 otherwise
+    bool hasBox;                   // [BOX] row (any OBJECT type), centered on the origin
+    double sizeX, sizeY, sizeZ;    // meters, local axes
+    bool hasFov;                   // [FOV] row (any OBJECT type)
+    double fovHorizontal, fovVertical, fovDistance; // degrees, degrees, meters
+    bool hasCamera;                // [CAMERA] row
+    double cameraFovH, cameraFovV; // degrees
+    int32_t target;                // [PROJECTOR] TargetID -> index in the output array, -1 if none
+} SSDBObjectInfo;
+
+// Loads the scene like ssdb_load_scene and writes up to maxObjects OBJECT rows in file order,
+// speakers included. Parse/validation errors of the file fail like ssdb_load_scene (-1, message).
+// A geometry row with bad values or references (e.g. Width 0, PROJECTOR target that is not a
+// screen/surface/led) is skipped and reported in outWarnings (newline-separated; these warnings
+// only, not ssdb_load_scene's) so the speakers stay usable. Returns the number written.
+int32_t ssdb_load_objects(const char *path, SSDBObjectInfo *outObjects, int32_t maxObjects,
+                          char *outWarnings, int32_t warningsCapacity,
+                          char *outErrorMessage, int32_t errorMessageCapacity);
+
 // Legacy API kept for Tools/selfcheck.cpp: position already SceneKit-converted.
 typedef struct {
     int32_t channel;

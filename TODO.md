@@ -10,7 +10,7 @@ Planned work, roughly in priority order within each section. Contributions welco
 - [ ] Meters: selectable layout (grid / horizontal strip), channels-per-row zoom, dB scale labels, value readout on hover
 - [ ] Meters: group channels by SSD speaker layer (e.g. ear level / upper / ceiling / subs)
 - [ ] Monitor: avoid overlapping labels for nearby speakers, add a color/level legend
-- [ ] Monitor: visualize Gain and Delay (not only in the table)
+- [ ] Monitor: show Delay graphically (Gain already drives the level display; both are in the Ch + Name labels)
 - [ ] Monitor: draw speaker aim once SSD defines a speaker forward axis
 - [ ] Routing panel: sortable columns, search, copy warnings to clipboard
 - [ ] Driver controls: progress feedback while coreaudiod restarts, clearer error messages

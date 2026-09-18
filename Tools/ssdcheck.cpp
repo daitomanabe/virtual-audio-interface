@@ -23,7 +23,7 @@ static const SSDBSpeakerInfo &byName(int n, const char *name) {
     assert(false);
     return sp[0];
 }
-static bool near(double a, double b) { return std::fabs(a - b) < 1e-6; }
+static bool near(double a, double b, double eps = 1e-6) { return std::fabs(a - b) < eps; }
 
 static const std::string kHead = "[SCENE]\nVersion\t0.1\nUnit\tmeter\nCoordinateSystem\tSSD_RH_ZUP\nAngleUnit\tdegree\n";
 
@@ -75,8 +75,121 @@ static void readerChecks() {
     expectError("[SCENE]\nVersion\t0.2\n", "line 2:");
 }
 
+static SSDBObjectInfo objects[SSDB_MAX_OBJECTS];
+
+static int loadObjects(const char *path) {
+    int n = ssdb_load_objects(path, objects, SSDB_MAX_OBJECTS, warnings, sizeof warnings, err, sizeof err);
+    if (n < 0) std::printf("load error (%s): %s\n", path, err);
+    return n;
+}
+static int objectIndex(int n, const char *id) {
+    for (int i = 0; i < n; ++i)
+        if (std::strcmp(objects[i].objectId, id) == 0) return i;
+    std::printf("missing object %s\n", id);
+    assert(false);
+    return -1;
+}
+// m * p, with (point) or without (direction) the translation column.
+static SSDBVec3 apply(const SSDBMatrix &m, SSDBVec3 p, bool point = true) {
+    double v[3] = {p.x, p.y, p.z}, o[3];
+    for (int r = 0; r < 3; ++r)
+        o[r] = m.m[r * 4] * v[0] + m.m[r * 4 + 1] * v[1] + m.m[r * 4 + 2] * v[2] + (point ? m.m[r * 4 + 3] : 0);
+    return {o[0], o[1], o[2]};
+}
+static bool is(SSDBVec3 v, double x, double y, double z, double eps = 1e-6) {
+    if (near(v.x, x, eps) && near(v.y, y, eps) && near(v.z, z, eps)) return true;
+    std::printf("got (%g, %g, %g), expected (%g, %g, %g)\n", v.x, v.y, v.z, x, y, z);
+    return false;
+}
+static SSDBVec3 sk(SSDBVec3 p) { return ssdb_to_scenekit(p.x, p.y, p.z); }
+
+static void objectChecks() {
+    int n = loadObjects("../Examples/venue-demo.sscene");
+    assert(n == 20 && warnings[0] == '\0');
+    assert(std::strcmp(objects[0].objectId, "1") == 0 && std::strcmp(objects[0].type, "speaker") == 0); // file order
+
+    // Upright screen (0, 90, 0): +Z front normal -> world -Y, local Y (up) -> +Z.
+    const SSDBObjectInfo &scr = objects[objectIndex(n, "scr")];
+    assert(std::strcmp(scr.type, "screen") == 0 && scr.hasRect && near(scr.width, 8) && near(scr.height, 4.5));
+    assert(scr.parent == -1 && scr.active && !scr.hasBox && !scr.hasFov && scr.target == -1);
+    assert(is(apply(scr.world, {0, 0, 1}, false), 0, -1, 0) && is(apply(scr.world, {0, 1, 0}, false), 0, 0, 1));
+    assert(is(apply(scr.world, {4, 2.25, 0}), 4, 6, 5.45)); // UV (1, 1): top right as seen from the audience
+
+    // LED on a rig with Yaw 90: parent index, world pose through the parent, pixel counts.
+    const int rig = objectIndex(n, "rigL");
+    const SSDBObjectInfo &ledL = objects[objectIndex(n, "ledL")];
+    assert(ledL.parent == rig && ledL.hasRect && ledL.pixelWidth == 384 && ledL.pixelHeight == 192);
+    assert(is(apply(ledL.world, {0, 0, 0}), -6, 1, 2.2));
+    assert(is(apply(ledL.world, {0, 0, 1}, false), 1, 0, 0) && is(apply(ledL.world, {1, 0, 0}, false), 0, 1, 0));
+    const SSDBObjectInfo &ledR = objects[objectIndex(n, "ledR")];
+    assert(ledR.parent == -1 && is(apply(ledR.world, {0, 0, 1}, false), -1, 0, 0) &&
+           is(apply(ledR.world, {0, 1, 0}, false), 0, 0, 1));
+
+    // Projector: target, FOV, and its frustum corner lands on the screen's UV (1, 1) corner.
+    const SSDBObjectInfo &pj = objects[objectIndex(n, "pj")];
+    assert(pj.target == objectIndex(n, "scr") && pj.hasFov && near(pj.fovDistance, 11) && !pj.hasCamera);
+    const double toRad = std::acos(-1.0) / 180;
+    const double hx = 11 * std::tan(pj.fovHorizontal / 2 * toRad), hy = 11 * std::tan(pj.fovVertical / 2 * toRad);
+    assert(is(apply(pj.world, {hx, hy, -11}), 4, 6, 5.45, 1e-2)); // the app's convention: view along local -Z
+
+    const SSDBObjectInfo &camTop = objects[objectIndex(n, "camTop")];
+    assert(camTop.hasCamera && near(camTop.cameraFovH, 70) && camTop.hasFov && near(camTop.fovDistance, 5.49));
+    assert(is(apply(camTop.world, {0, 0, -1}, false), 0, 0, -1)); // zero pose looks down
+    const SSDBObjectInfo &camStage = objects[objectIndex(n, "camStage")];
+    const double c15 = std::cos(15 * toRad), s15 = std::sin(15 * toRad);
+    assert(is(apply(camStage.world, {0, 0, -1}, false), 0, -c15, -s15) &&
+           is(apply(camStage.world, {0, 1, 0}, false), 0, -s15, c15)); // up leans forward with the tilt
+    assert(!objects[objectIndex(n, "camSpare")].active);
+    const SSDBObjectInfo &stage = objects[objectIndex(n, "stage")];
+    assert(stage.hasBox && near(stage.sizeX, 12) && near(stage.sizeY, 2.5) && near(stage.sizeZ, 0.8) && !stage.hasRect);
+    const SSDBObjectInfo &mic = objects[objectIndex(n, "mic")];
+    assert(std::strcmp(mic.type, "microphone") == 0 && !mic.hasRect && !mic.hasBox && !mic.hasFov && !mic.hasCamera);
+
+    // SSD -> SceneKit pose: B * M * B^-1. The upright screen's normal (SSD local +Z, i.e. SceneKit
+    // local B(0,0,1)) must point to SceneKit +Z (= SSD -Y, towards the audience), its up to +Y.
+    SSDBMatrix k = ssdb_matrix_to_scenekit(scr.world);
+    assert(is(apply(k, sk({0, 0, 1}), false), 0, 0, 1) && is(apply(k, sk({0, 1, 0}), false), 0, 1, 0));
+    assert(is(apply(k, {0, 0, 0}), 0, 3.2, -6));
+    // In general node(B p) == B (M p): check points of parented / yaw+pitch+roll poses.
+    for (const SSDBObjectInfo *o : {&ledL, &ledR, &camStage, &pj}) {
+        k = ssdb_matrix_to_scenekit(o->world);
+        for (SSDBVec3 p : {SSDBVec3{0, 0, 0}, SSDBVec3{1, 2, 3}, SSDBVec3{-3, 1.5, -0.5}}) {
+            SSDBVec3 want = sk(apply(o->world, p));
+            assert(is(apply(k, sk(p)), want.x, want.y, want.z));
+        }
+    }
+
+    // Bad geometry rows are skipped with a warning; the scene itself still loads.
+    const char *tmp = "ssdcheck_objects.sscene";
+    std::FILE *f = std::fopen(tmp, "w");
+    std::fputs((kHead + "[OBJECT]\n"
+                        "s\tscreen\tS\tnone\t0\t0\t0\t0\t0\t0\t1\n"
+                        "c\tcamera\tC\tnone\t0\t0\t0\t0\t0\t0\t1\n"
+                        "p\tprojector\tP\tnone\t0\t0\t0\t0\t0\t0\t1\n"
+                        "[SCREEN]\ns\t0\t2\n"                             // Width 0
+                        "[CAMERA]\ns\t60\t40\t1\t1\nc\t180\t40\t1\t1\n"   // wrong Type, FovH 180
+                        "[PROJECTOR]\np\to\tc\t1\t1\n"                    // target is a camera
+                        "[BOX]\nmissing\t1\t1\t1\n")                      // no such OBJECT
+                   .c_str(), f);
+    std::fclose(f);
+    n = loadObjects(tmp);
+    std::remove(tmp);
+    assert(n == 3);
+    for (int i = 0; i < n; ++i)
+        assert(!objects[i].hasRect && !objects[i].hasCamera && !objects[i].hasBox && objects[i].target == -1);
+    for (const char *w : {"[SCREEN] row ignored: line 11: Width must be > 0", "[CAMERA] row ignored: line 13: OBJECT s has Type",
+                          "[CAMERA] row ignored: line 14: FovH", "[PROJECTOR] row ignored: line 16: TargetID 'c'",
+                          "[BOX] row ignored: line 18: no OBJECT"}) {
+        if (!std::strstr(warnings, w)) std::printf("missing warning '%s' in:\n%s\n", w, warnings);
+        assert(std::strstr(warnings, w));
+    }
+    assert(ssdb_load_objects("../Examples/missing.sscene", objects, SSDB_MAX_OBJECTS, warnings, sizeof warnings,
+                             err, sizeof err) == -1 && err[0]);
+}
+
 int main() {
     readerChecks();
+    objectChecks();
 
     int n = load("../Examples/dome-24.sscene");
     assert(n == 24);
