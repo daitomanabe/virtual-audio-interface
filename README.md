@@ -24,8 +24,10 @@ the sounding speakers lit up, and warnings for routing mistakes.
 - **Meters** — dBFS meters for every channel with RMS, peak, peak hold and latched clip indicators.
   Channels that carry signal but have no speaker in the loaded layout are marked *unassigned*.
 - **Monitor** — loads an SSD (`.sscene`) speaker layout and shows it as a plan view, front/side
-  elevations or a free 3D view. Speakers light up by level; optional lines from the listener show what is
-  sounding right now. Click a speaker to select it everywhere.
+  elevations or a free 3D view. Speakers light up by level (optionally input level + the layout's Gain);
+  optional lines from the listener show what is sounding right now. Screens, LED walls, projectors, cameras,
+  boxes and FOVs from the same file are drawn for context. Click a speaker to select it everywhere.
+  The file reloads automatically when you save it.
 - **Routing checks** — signal on an unassigned channel, speakers beyond the device's channel count,
   signal on muted or disabled speakers, channels shared by several speakers, parser warnings.
 - **Host-decided values** — IO buffer size, running state, client count and the sample rate the DAW asked
@@ -80,16 +82,20 @@ To only unload the driver and keep the app, use **Driver OFF** in the app.
    In Ableton Live: *Settings → Audio → Audio Output Device*, then enable the channels you need in
    *Output Config*.
 3. Open a layout with **Open…** (⌘O) or drop a `.sscene` file on the window.
-   Try [`Examples/dome-24.sscene`](Examples/dome-24.sscene).
+   Try [`Examples/dome-24.sscene`](Examples/dome-24.sscene), or
+   [`Examples/venue-demo.sscene`](Examples/venue-demo.sscene) for speakers with a screen, LED walls,
+   a projector and cameras.
 4. Play. The **Monitor** tab lights up the speakers that receive signal; **Meters** shows every channel.
 
-The app reopens the last layout on the next launch; **Reload** (⌘R) picks up edits to the file.
+The app reopens the last layout on the next launch. Saving the file in an editor reloads it automatically
+and keeps the view and selection; if the saved file does not parse (e.g. half-written), the last valid
+version stays on screen under an error banner. **Reload** (⌘R) re-reads the file and re-frames the view.
 
 ## Speaker layouts (SSD / .sscene)
 
 Layouts use SSD (Spatial Scene Definition) v0.1, a tab-separated text format documented in
-[daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format). The app reads the sections below;
-other SSD sections (screens, projectors, cameras, …) are accepted and ignored.
+[daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format). Speakers are defined by the
+sections below; the other objects of a scene are drawn for context (see [Scene objects](#scene-objects)).
 
 ```text
 [SCENE]
@@ -117,6 +123,30 @@ AngleUnit	degree
   Several speakers may share a channel.
 - `[REVIEW_VOLUME]` (Width, Depth, Height) is shown as information only.
 - SSD does not define a speaker's forward axis, so speaker aim is not drawn.
+- **Apply SSD gain** (on by default) lights speakers by input level + `Gain`, the level expected at the
+  speaker; the speaker table shows both, and the level bar sits in the column that drives the 3D view.
+  Muted speakers never light up (red cross). **Ch + Name** labels add non-zero `Gain` / `Delay`.
+
+### Scene objects
+
+With **Scene objects** on (the default), every other OBJECT is drawn in muted colors behind the speakers:
+
+| Section / type | Drawn as |
+|---|---|
+| `[SCREEN]` / `[SURFACE]` (Width, Height) | translucent rectangle, outline, short tick on the front (+Z) side |
+| `[LED]` (Width, Height, PixelWidth, PixelHeight) | the same with a coarse pixel grid |
+| `[BOX]` (SizeX, SizeY, SizeZ), any type | wireframe box centered on the object |
+| `[FOV]` (Horizontal, Vertical, Distance), any type | frustum |
+| type `camera` / `projector` | small view pyramid, shaped by `[CAMERA]` FovH / FovV if present |
+| `[PROJECTOR]` TargetID | dotted line from the projector to its target |
+| any other type (microphone, …) | small marker; rigs that only hold other objects stay unlabeled |
+
+Rectangles follow the spec: local X right, Y up, +Z front normal, centered; `(Yaw, Pitch, Roll) = (0, 90, 0)`
+stands one upright facing world −Y. SSD v0.1 does not define an optical axis for cameras, projectors or FOV;
+**this app draws them looking along local −Z** with X right and Y up (the rectangle's image frame), so
+`(0, 90, 0)` looks toward world +Y and the zero pose looks straight down. Poses go to SceneKit as
+B·M·B⁻¹ (`ssdb_matrix_to_scenekit`), never as reused Euler angles. A geometry row with invalid values is
+skipped with a parser warning; the speakers still load. `[REVIEW_VOLUME]` is not drawn.
 
 The parser ([`ssd_reader.h`](VisualizerApp/Sources/SSDBridge/ssd_reader.h)) is an independent
 implementation of the format, written from the spec and cross-checked against the reference reader in
@@ -180,7 +210,7 @@ The version comes from [`VERSION`](VERSION); the build number is the commit coun
 ### Tests and tools
 
 ```bash
-make -C Tools check            # shared memory + meter ballistics, SSD parser and transforms
+make -C Tools check            # shared memory + meter ballistics, SSD parser, objects and transforms, file watcher
 make -C Tools harness          # drives the plug-in like coreaudiod under ASan/UBSan
 ```
 
