@@ -9,7 +9,8 @@ Planned work, roughly in priority order within each section. Contributions welco
 - [x] App icon (`packaging/icon/make_icon.swift`) and the standard About panel
 - [ ] Meters: selectable layout (grid / horizontal strip), channels-per-row zoom, dB scale labels, value readout on hover
 - [x] Meters: group channels by SSD speaker layer (Layout mode: height groups, Unassigned with signal)
-- [ ] Monitor: avoid overlapping labels for nearby speakers, add a color/level legend
+- [ ] Monitor: avoid overlapping labels for nearby speakers and scene objects (the light rows and the room
+      label in `Examples/FIL-v1.sscene`, Top view with Channel + name labels), add a color/level legend
 - [x] Monitor: visualize Gain and Delay (Gain drives the level display; both in the Channel + name labels and the speaker table)
 - [ ] Monitor: draw speaker aim once SSD defines a speaker forward axis
 - [ ] Routing panel: sortable columns, search, copy warnings to clipboard

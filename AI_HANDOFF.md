@@ -8,7 +8,7 @@
 
 - Overall: `IN_PROGRESS` — v0.2.0 is released and working on the author's machine; the roadmap in `TODO.md` is open.
 - Evidence freshness: `current` as of the capture time (commit `9435351`, tag `v0.2.0`).
-- Safe continuation: `yes` — the checkout is clean and `main` equals `origin/main`. Anything that restarts `coreaudiod` or publishes needs the user's approval (see Safety Boundaries).
+- Safe continuation: `yes` — the checkout is clean; `main` is ahead of `origin/main` by the unpushed FIL-v1 example and screenshot commits (see Change Log). Anything that restarts `coreaudiod` or publishes needs the user's approval (see Safety Boundaries).
 
 ## Read First
 
@@ -38,7 +38,7 @@ Start by checking the real checkout, branch/worktree, and dirty state. Do not as
 
 ## Current State
 
-- `[VERIFIED]` `main` at `9435351`, clean, equal to `origin/main`; tags `v0.1.0`, `v0.2.0` exist locally and on GitHub. The repository is public (MIT).
+- `[VERIFIED]` Release `v0.2.0` = `9435351`; later commits on `main` are docs, the FIL-v1 example and screenshots only, and the last two are not pushed (check `git status -sb`); tags `v0.1.0`, `v0.2.0` exist locally and on GitHub. The repository is public (MIT).
 - `[VERIFIED]` Signal path works end to end on the author's Mac: Ableton Live → driver → shared memory → app. Measured shm update rate ≈ 94/s at 48 kHz / 512 frames (48000 / 512 = 93.75).
 - `[VERIFIED]` The driver runs in coreaudiod's helper process `Core Audio Driver (VirtualAudioInterfaceDriver.driver)`. ON/OFF/Update copies or removes the bundle in `/Library/Audio/Plug-Ins/HAL` and restarts `coreaudiod`; the app compares `VAIDriverSourceHash` (stamped by `HALPlugin/Makefile`) to decide "outdated".
 - `[VERIFIED]` On the author's machine (many third-party audio drivers) `coreaudiod` stayed at ~100% CPU and unresponsive for ~2 min 20 s after the installer restarted it. CoreAudio lookups in the app were moved off the main thread because of this.
@@ -55,7 +55,9 @@ Start by checking the real checkout, branch/worktree, and dirty state. Do not as
 - `[VERIFIED]` Test signal on the live driver: `--test-signal 17 3 sine -20` → ch17 peak 0.1000 (−20.0 dBFS), neighbours 0; three parallel instances on ch1/9/17 at −12 dBFS → 0.2512 each.
 - `[VERIFIED]` App keeps running behind other apps: window hidden for 25 s keeps ~25% CPU (not throttled). `--docshot` captures with its window ordered behind all others (checked with the on-screen window list) and still renders SceneKit.
 - `[VERIFIED]` v0.2.0 pkg: universal app and driver (`lipo -archs` → `x86_64 arm64`), both components non-relocatable, `shasum -a 256 -c` OK; installing over v0.1.0 worked on the author's machine and the driver showed ON/up to date afterwards.
-- `[VERIFIED]` UI is English-only; README screenshots in `docs/images/` were captured from the v0.2.0 build with the driver ON.
+- `[VERIFIED]` UI is English-only; README screenshots in `docs/images/` were captured from the v0.2.0 build (98) with the driver ON, all from `Examples/FIL-v1.sscene` (recipe in `AGENTS.md`). During the capture the frontmost app did not change and the docshot window was last in the on-screen window list.
+- `[VERIFIED]` `Examples/FIL-v1.sscene` (the user's real-room study) loads with 16 speakers, 35 objects and no warnings; covered by `ssdcheck`.
+- `[INFERRED]` The `[SPEAKER]` rows in `Examples/FIL-v1.sscene` are an assumed patch (NYS slot N → channel N+1, extras → 13–16); the source export had none because the physical channel numbering is unconfirmed. Replace them when the user confirms the patch.
 - `[NOT_RUN]` Interactive GUI flows after the last fixes: Driver ON/OFF/Update clicks, test-signal play/step with selection following, auto reload while editing a file in a real editor.
   - Reason: needs a person at the GUI and admin password; required before: the next release.
 - `[NOT_RUN]` macOS 13–15 and real Intel hardware (only the test signal ran under Rosetta).
@@ -66,7 +68,7 @@ Start by checking the real checkout, branch/worktree, and dirty state. Do not as
 
 1. `[IN_PROGRESS]` Roadmap in `TODO.md` — the user has not picked the next item. Candidates the session considered most valuable:
    - Performance: bring CPU well below 10% (publish only changed meter values, skip SwiftUI updates while occluded, lower the 3D update rate when idle) — acceptance: `ps -o %cpu` under 10% with 128 channels playing.
-   - Monitor: avoid overlapping labels for nearby speakers (visible in `dome-24` Top view with Channel + name labels).
+   - Monitor: avoid overlapping labels for nearby speakers and scene objects (visible in the README hero image: the light rows and the room label of `Examples/FIL-v1.sscene`, Top view with Channel + name labels).
    - Device name should follow the configured channel count (currently fixed "Virtual Audio Interface (128ch)").
 2. `[UNKNOWN]` Manual GUI verification of the NOT_RUN flows above — first check: ask the user to run Driver Update, Test signal "Step through SSD speakers" on `Examples/dome-24.sscene`, and edit/save a `.sscene`.
 
@@ -120,3 +122,4 @@ Do not treat the conversation summary as a substitute for this document. Do not 
 | Timestamp | Agent / session label | Change | Evidence |
 | --- | --- | --- | --- |
 | `2026-09-18` | `Claude Code` | initial capture after the v0.2.0 release | `make -C Tools check`, `make -C Tools harness`, `gh release view v0.2.0` |
+| `2026-09-18` | `Claude Code` | added `Examples/FIL-v1.sscene` (assumed speaker patch), README screenshots retaken from it, screenshot recipe in `AGENTS.md`; not pushed | `make -C Tools check` → `ssdcheck OK`; docshot PNGs inspected |

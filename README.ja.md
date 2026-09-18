@@ -90,8 +90,12 @@ sudo ./uninstall.sh
    Ableton Live では *設定 → オーディオ → オーディオ出力デバイス* で選び、*出力設定* で使うチャンネルを
    有効にします。
 3. **Open…**(⌘O)で配置ファイルを開くか、`.sscene` をウィンドウにドロップします。
-   まずは [`Examples/dome-24.sscene`](Examples/dome-24.sscene) を試してください。スクリーン、LED ウォール、
-   プロジェクター、カメラを含む例は [`Examples/venue-demo.sscene`](Examples/venue-demo.sscene) です。
+   まずはスクリーンショットと同じ [`Examples/FIL-v1.sscene`](Examples/FIL-v1.sscene) を試してください。
+   実在の部屋の配置で、スピーカー 16 本、ムービングライト、プロジェクターと壁面の投影範囲を含みます
+   (チャンネルの割り当ては仮のものです。ファイル内の注記を参照)。
+   [`Examples/dome-24.sscene`](Examples/dome-24.sscene) はゲイン、ディレイ、ミュートを含む 24 本のドーム、
+   [`Examples/venue-demo.sscene`](Examples/venue-demo.sscene) はスクリーン、LED ウォール、プロジェクター、
+   カメラを含む例です。
 4. 再生すると、**Monitor** タブで信号が来ているスピーカーが光り、**Meters** で全チャンネルが見えます。
    DAW がないときは **Test signal**(2 段目の右)を使えます。
 

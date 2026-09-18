@@ -86,8 +86,10 @@ To only unload the driver and keep the app, choose **Turn Driver Off** in the ap
    In Ableton Live: *Settings → Audio → Audio Output Device*, then enable the channels you need in
    *Output Config*.
 3. Open a layout with **Open…** (⌘O) or drop a `.sscene` file on the window.
-   Try [`Examples/dome-24.sscene`](Examples/dome-24.sscene), or
-   [`Examples/venue-demo.sscene`](Examples/venue-demo.sscene) for speakers with a screen, LED walls,
+   Try [`Examples/FIL-v1.sscene`](Examples/FIL-v1.sscene), the scene in the screenshots: a real room with
+   16 speakers, moving lights, a projector and its wall image (its channel patch is an assumption, see the
+   file). [`Examples/dome-24.sscene`](Examples/dome-24.sscene) is a 24-speaker dome with gain, delay and a
+   muted speaker; [`Examples/venue-demo.sscene`](Examples/venue-demo.sscene) adds a screen, LED walls,
    a projector and cameras.
 4. Play. The **Monitor** tab lights up the speakers that receive signal; **Meters** shows every channel.
    No DAW at hand? Start the **Test signal** (second row, right).
