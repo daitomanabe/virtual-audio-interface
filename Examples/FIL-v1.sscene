@@ -1,0 +1,162 @@
+# A real room: 12 hung speakers + 4 extra speakers, 16 moving lights, one projector and its wall image.
+# Working study exported from a venue survey; positions are estimates (see [EVIDENCE] / [UNRESOLVED]).
+# The [SPEAKER] rows were added for this example and are an assumption, not a confirmed patch.
+
+[SCENE]
+Version	0.1
+Name	Room 01 / initial spatial study
+Unit	meter
+CoordinateSystem	SSD_RH_ZUP
+AngleUnit	degree
+Profile	SSD_REVIEW_0.1
+Status	WORKING STUDY / UNCONFIRMED ITEMS
+Origin	Floor centre (speaker source basis assumed)
+
+[OBJECT]
+room-envelope	custom	Room envelope / user dimensions	none	0	0	1.35	0	0	0	1
+speaker-nys-00	speaker	Front C	none	0	3.84	2.55	0	0	0	1
+speaker-nys-01	speaker	Front R	none	1.9	3.84	2.55	0	0	0	1
+speaker-nys-02	speaker	R1	none	1.9	1.74	2.41	0	0	0	1
+speaker-nys-03	speaker	R2	none	1.9	-0.86	2.41	0	0	0	1
+speaker-nys-04	speaker	Rear R	none	1.9	-3.66	2.55	0	0	0	1
+speaker-nys-05	speaker	Rear C	none	0	-3.66	2.55	0	0	0	1
+speaker-nys-06	speaker	Rear L	none	-1.4	-3.66	2.55	0	0	0	1
+speaker-nys-07	speaker	L2	none	-1.4	-0.86	2.41	0	0	0	1
+speaker-nys-08	speaker	L1	none	-1.4	1.74	2.41	0	0	0	1
+speaker-nys-09	speaker	Front L	none	-1.4	3.84	2.55	0	0	0	1
+speaker-nys-10	speaker	Ceiling1	none	0	1.74	2.41	0	0	0	1
+speaker-nys-11	speaker	Ceiling2	none	0	-0.86	2.41	0	0	0	1
+speaker-extra-front-left	speaker	Extra front-left	none	-1.9	3.19	1.35	0	0	0	1
+speaker-extra-front-right	speaker	Extra front-right	none	1.5	3.19	1.35	0	0	0	1
+speaker-extra-rear-left	speaker	Extra rear-left	none	-1.9	-3.06	1.35	0	0	0	1
+speaker-extra-rear-right	speaker	Extra rear-right	none	1.5	-3.06	1.35	0	0	0	1
+light-01	light	Light 01 / 正面下手	none	-0.95	3.84	2.55	0	0	0	1
+light-02	light	Light 02	none	-0.45	3.84	2.55	0	0	0	1
+light-03	light	Light 03	none	0.5	3.84	2.55	0	0	0	1
+light-04	light	Light 04 / 正面上手	none	1	3.84	2.55	0	0	0	1
+light-05	light	Light 05 / 前中下手	none	-0.95	1.74	2.41	0	0	0	1
+light-06	light	Light 06	none	-0.45	1.74	2.41	0	0	0	1
+light-07	light	Light 07	none	0.5	1.74	2.41	0	0	0	1
+light-08	light	Light 08 / 前中上手	none	1	1.74	2.41	0	0	0	1
+light-09	light	Light 09 / 後中下手	none	-0.95	-0.86	2.41	0	0	0	1
+light-10	light	Light 10	none	-0.45	-0.86	2.41	0	0	0	1
+light-11	light	Light 11	none	0.5	-0.86	2.41	0	0	0	1
+light-12	light	Light 12 / 後中上手	none	1	-0.86	2.41	0	0	0	1
+light-13	light	Light 13 / 後方下手	none	-0.95	-3.66	2.55	0	0	0	1
+light-14	light	Light 14	none	-0.45	-3.66	2.55	0	0	0	1
+light-15	light	Light 15	none	0.5	-3.66	2.55	0	0	0	1
+light-16	light	Light 16 / 後方上手	none	1	-3.66	2.55	0	0	0	1
+projector-01	projector	PJ 01	none	-0.95	0	2.7	0	0	90	1
+projection-wall-01	surface	PJ 01 / wall image	none	2.6	0.49	1.325	-90	0	-90	1
+
+[SPEAKER]
+# ID	Channel	Gain	Delay	Mute
+# Assumed patch: NYS slot N -> channel N+1, extra speakers -> 13-16.
+speaker-nys-00	1	0	0	0
+speaker-nys-01	2	0	0	0
+speaker-nys-02	3	0	0	0
+speaker-nys-03	4	0	0	0
+speaker-nys-04	5	0	0	0
+speaker-nys-05	6	0	0	0
+speaker-nys-06	7	0	0	0
+speaker-nys-07	8	0	0	0
+speaker-nys-08	9	0	0	0
+speaker-nys-09	10	0	0	0
+speaker-nys-10	11	0	0	0
+speaker-nys-11	12	0	0	0
+speaker-extra-front-left	13	0	0	0
+speaker-extra-front-right	14	0	0	0
+speaker-extra-rear-left	15	0	0	0
+speaker-extra-rear-right	16	0	0	0
+
+[REVIEW_VOLUME]
+5.2	8.2	2.7	USER_DIMENSIONS / ORIGIN_FLOOR_CENTRE
+
+[DEVICE]
+projector-01	Panasonic PT-RZ970	DLP
+light-01	Ayrton MagicDot-R	RGBW LED moving head
+light-02	Ayrton MagicDot-R	RGBW LED moving head
+light-03	Ayrton MagicDot-R	RGBW LED moving head
+light-04	Ayrton MagicDot-R	RGBW LED moving head
+light-05	Ayrton MagicDot-R	RGBW LED moving head
+light-06	Ayrton MagicDot-R	RGBW LED moving head
+light-07	Ayrton MagicDot-R	RGBW LED moving head
+light-08	Ayrton MagicDot-R	RGBW LED moving head
+light-09	Ayrton MagicDot-R	RGBW LED moving head
+light-10	Ayrton MagicDot-R	RGBW LED moving head
+light-11	Ayrton MagicDot-R	RGBW LED moving head
+light-12	Ayrton MagicDot-R	RGBW LED moving head
+light-13	Ayrton MagicDot-R	RGBW LED moving head
+light-14	Ayrton MagicDot-R	RGBW LED moving head
+light-15	Ayrton MagicDot-R	RGBW LED moving head
+light-16	Ayrton MagicDot-R	RGBW LED moving head
+
+[SURFACE]
+projection-wall-01	3.9	2.15
+
+[BOX]
+room-envelope	5.2	8.2	2.7
+
+[EVIDENCE]
+room-envelope	DERIVED	DEFINED	user-dimensions	floor-centre	Rectangular envelope derived from stated dimensions; not a measured wall model
+speaker-nys-00	PROXY / PHOTO_X / LIGHT_ROW_YZ	OPEN	photo-light-alignment	0	NYS slot 0; X estimated from photo; Y/Z match light 1; aim/channel OPEN
+speaker-nys-01	PROXY / PHOTO_X / LIGHT_ROW_YZ	OPEN	photo-light-alignment	1	NYS slot 1; X estimated from photo; Y/Z match light 1; aim/channel OPEN
+speaker-nys-02	PROXY / PHOTO_X / LIGHT_ROW_YZ	OPEN	photo-light-alignment	2	NYS slot 2; X estimated from photo; Y/Z match light 5; aim/channel OPEN
+speaker-nys-03	PROXY / PHOTO_X / LIGHT_ROW_YZ	OPEN	photo-light-alignment	3	NYS slot 3; X estimated from photo; Y/Z match light 9; aim/channel OPEN
+speaker-nys-04	PROXY / PHOTO_X / LIGHT_ROW_YZ	OPEN	photo-light-alignment	4	NYS slot 4; X estimated from photo; Y/Z match light 13; aim/channel OPEN
+speaker-nys-05	PROXY / PHOTO_X / LIGHT_ROW_YZ	OPEN	photo-light-alignment	5	NYS slot 5; X estimated from photo; Y/Z match light 13; aim/channel OPEN
+speaker-nys-06	PROXY / PHOTO_X / LIGHT_ROW_YZ	OPEN	photo-light-alignment	6	NYS slot 6; X estimated from photo; Y/Z match light 13; aim/channel OPEN
+speaker-nys-07	PROXY / PHOTO_X / LIGHT_ROW_YZ	OPEN	photo-light-alignment	7	NYS slot 7; X estimated from photo; Y/Z match light 9; aim/channel OPEN
+speaker-nys-08	PROXY / PHOTO_X / LIGHT_ROW_YZ	OPEN	photo-light-alignment	8	NYS slot 8; X estimated from photo; Y/Z match light 5; aim/channel OPEN
+speaker-nys-09	PROXY / PHOTO_X / LIGHT_ROW_YZ	OPEN	photo-light-alignment	9	NYS slot 9; X estimated from photo; Y/Z match light 1; aim/channel OPEN
+speaker-nys-10	PROXY / PHOTO_X / LIGHT_ROW_YZ	OPEN	photo-light-alignment	10	NYS slot 10; X estimated from photo; Y/Z match light 5; aim/channel OPEN
+speaker-nys-11	PROXY / PHOTO_X / LIGHT_ROW_YZ	OPEN	photo-light-alignment	11	NYS slot 11; X estimated from photo; Y/Z match light 9; aim/channel OPEN
+speaker-extra-front-left	DERIVED / USER_OFFSET / ESTIMATED_REFERENCE	OPEN	user-speaker-offsets	front-left	Centre offset [-0.5, -0.65, -1.2] m in SSD axes from speaker-nys-09; inherits reference uncertainty
+speaker-extra-front-right	DERIVED / USER_OFFSET / ESTIMATED_REFERENCE	OPEN	user-speaker-offsets	front-right	Centre offset [-0.4, -0.65, -1.2] m in SSD axes from speaker-nys-01; inherits reference uncertainty
+speaker-extra-rear-left	DERIVED / USER_OFFSET / ESTIMATED_REFERENCE	OPEN	user-speaker-offsets	rear-left	Centre offset [-0.5, 0.6, -1.2] m in SSD axes from speaker-nys-06; inherits reference uncertainty
+speaker-extra-rear-right	DERIVED / USER_OFFSET / ESTIMATED_REFERENCE	OPEN	user-speaker-offsets	rear-right	Centre offset [-0.4, 0.6, -1.2] m in SSD axes from speaker-nys-04; inherits reference uncertainty
+light-01	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	1	DMX start address=1; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-02	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	2	DMX start address=18; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-03	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	3	DMX start address=35; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-04	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	4	DMX start address=52; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-05	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	5	DMX start address=69; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-06	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	6	DMX start address=86; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-07	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	7	DMX start address=103; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-08	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	8	DMX start address=120; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-09	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	9	DMX start address=137; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-10	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	10	DMX start address=154; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-11	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	11	DMX start address=171; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-12	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	12	DMX start address=188; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-13	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	13	DMX start address=205; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-14	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	14	DMX start address=222; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-15	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	15	DMX start address=239; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+light-16	SOURCE / UNIT_mm conversion adopted as the lighting reference for this estimate	OPEN	lighting-sheet	16	DMX start address=256; universe=1; MagicDot-R St 17ch selected from chart/sheet; device mode/aim not verified
+projector-01	USER_POSITION / APPROX_Z	USER_WALL_PLUS_X / LEVEL_ASSUMED	user-projector-position	projector-01	Installation X=-0.95, Y=0 explicitly specified; Z approximately 2.7m. Projects onto projection-wall-01 on +X wall. Horizontal pose remains provisional: physical lens axis, lens shift, model and optics OPEN. User reports PT-RZ970 WUXGA, ceiling mode; lens model unknown.
+projection-wall-01	DERIVED / USER_BOUNDS	WALL_PLUS_X / NORMAL_MINUS_X	user-projection-bounds	projection-wall-01	Wall image bounds from user margins and speaker-row Y offsets; linked to projector-01; projector raster and optical calibration OPEN
+
+[LIGHT]
+light-01	1	1	moving_head
+light-02	1	18	moving_head
+light-03	1	35	moving_head
+light-04	1	52	moving_head
+light-05	1	69	moving_head
+light-06	1	86	moving_head
+light-07	1	103	moving_head
+light-08	1	120	moving_head
+light-09	1	137	moving_head
+light-10	1	154	moving_head
+light-11	1	171	moving_head
+light-12	1	188	moving_head
+light-13	1	205	moving_head
+light-14	1	222	moving_head
+light-15	1	239	moving_head
+light-16	1	256	moving_head
+
+[UNRESOLVED]
+speaker-origin	Coordinate basis	X estimated from front-row photo with lighting as reference; Y and Z match corresponding lighting row per user
+speaker-x-photo	Photo and user correction	PHOTO_ESTIMATE: left=-1.4m, centre=0m, right=1.9m; shared by four rows per user; not a survey
+lighting-unit	Source coordinate units	mm conversion adopted as the lighting reference for this estimate
+extra-speakers	Additional speaker confidence	DERIVED from user-specified offsets; inherits the hanging speakers photo-estimated X and lighting-reference Y/Z
+speaker-patch	Audio routing	NYS slot IDs retained; physical channel numbering is unconfirmed; SPEAKER rows assume slot N -> channel N+1, extras -> 13-16
+light-patch	Lighting patch	Universe=1; MagicDot-R St 17ch matches sheet RGB mapping; device mode/aim and network reachability not verified; see lighting.json
+projector-01	Projector installation and optics	Installation X=-0.95, Y=0 explicitly specified; Z approximately 2.7m. Projects onto projection-wall-01 on +X wall. Horizontal pose remains provisional: physical lens axis, lens shift, model and optics OPEN. User reports PT-RZ970 WUXGA, ceiling mode; lens model unknown.

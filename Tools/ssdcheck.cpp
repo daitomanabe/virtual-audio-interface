@@ -224,6 +224,15 @@ int main() {
     assert(byName(n, "Left (ch 130)").channel == 130);
     assert(!byName(n, "On disabled truss").active); // disabled via parent
 
+    // FIL-v1: a real-room export with sections this app does not read ([DEVICE], [EVIDENCE], [LIGHT], ...).
+    n = load("../Examples/FIL-v1.sscene");
+    assert(n == 16 && warnings[0] == '\0');
+    assert(byName(n, "Front C").channel == 1 && byName(n, "Extra rear-right").channel == 16);
+    n = loadObjects("../Examples/FIL-v1.sscene");
+    assert(n == 35 && warnings[0] == '\0');
+    const SSDBObjectInfo &wall = objects[objectIndex(n, "projection-wall-01")];
+    assert(wall.hasRect && near(wall.width, 3.9) && is(apply(wall.world, {0, 0, 1}, false), -1, 0, 0)); // faces -X
+
     assert(ssdb_load_scene("../Examples/missing.sscene", &info, sp, SSDB_MAX_SPEAKERS, warnings,
                            sizeof warnings, err, sizeof err) == -1 && err[0]);
     std::puts("ssdcheck OK");
