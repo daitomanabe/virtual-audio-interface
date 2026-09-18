@@ -185,8 +185,21 @@ final class TestSignalEngine: ObservableObject {
 
     /// Re-resolves the device. `force` also rebuilds when it looks unchanged (its format changed, or
     /// coreaudiod restarted and may have reused the object ID).
+    private var rebindGeneration = 0
+
+    /// findDevice() blocks while coreaudiod is busy (right after a driver ON/Update restart it can take
+    /// minutes), so it runs off the main thread; only the newest lookup is applied.
     private func rebind(force: Bool) {
-        let found = Self.findDevice()
+        rebindGeneration += 1
+        let generation = rebindGeneration
+        Task { [weak self] in
+            let found = await Task.detached(priority: .userInitiated) { Self.findDevice() }.value
+            guard let self, generation == self.rebindGeneration else { return }
+            self.apply(found, force: force)
+        }
+    }
+
+    private func apply(_ found: Device?, force: Bool) {
         guard force || found != device else { return }
         if let deviceListener, let listenedDevice {
             for var addr in Self.deviceAddresses {
@@ -324,6 +337,10 @@ extension TestSignalEngine {
         engine.signal = args.count > 2 && args[2] == "sine" ? .sine : .pink
         engine.levelDB = args.count > 3 ? Double(args[3])! : -20
         engine.selectedChannel = channel
+        let lookupDeadline = Date().addingTimeInterval(15) // the device lookup is asynchronous; coreaudiod may be busy
+        while engine.device == nil, Date() < lookupDeadline {
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+        }
         guard let device = engine.device else {
             print("test-signal: virtual device \(DriverController.deviceUID) not found (driver OFF?)")
             exit(1)

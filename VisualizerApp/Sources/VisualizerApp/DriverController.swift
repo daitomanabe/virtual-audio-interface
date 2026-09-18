@@ -33,7 +33,23 @@ final class DriverController: ObservableObject {
         RunLoop.main.add(timer!, forMode: .common) // keep running during menu tracking and live resize
     }
 
-    func refresh() { snapshot = Self.probe() }
+    private var probing = false
+
+    /// The CoreAudio lookup in probe() blocks while coreaudiod is busy (it can take minutes to come back
+    /// after a restart on a machine with many drivers), so never run it on the main thread.
+    func refresh() {
+        guard !probing else { return }
+        probing = true
+        Task { [weak self] in
+            let s = await Self.probeInBackground()
+            self?.snapshot = s
+            self?.probing = false
+        }
+    }
+
+    nonisolated static func probeInBackground() async -> Snapshot {
+        await Task.detached(priority: .utility) { probe() }.value
+    }
 
     nonisolated static func probe() -> Snapshot {
         let installed = FileManager.default.fileExists(atPath: halPath)
@@ -94,10 +110,10 @@ final class DriverController: ObservableObject {
 
     private static func waitFor(seconds: Double, _ done: (Snapshot) -> Bool) async -> Snapshot {
         let deadline = Date().addingTimeInterval(seconds)
-        var s = probe()
+        var s = await probeInBackground()
         while !done(s), Date() < deadline {
             try? await Task.sleep(nanoseconds: 500_000_000)
-            s = probe()
+            s = await probeInBackground()
         }
         return s
     }
