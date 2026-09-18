@@ -23,6 +23,7 @@ struct SpeakerSceneView: NSViewRepresentable {
     let showLines: Bool
     let labelMode: LabelMode
     let showObjects: Bool            // screens, LEDs, projectors, cameras, boxes, FOVs, other markers
+    let applyGain: Bool              // light speakers by input + SSD Gain instead of the input level
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -315,10 +316,7 @@ struct SpeakerSceneView: NSViewRepresentable {
 
         func apply(_ mode: LabelMode) {
             labelMode = mode
-            for n in nodes {
-                let s = n.speaker
-                setText(n.label, mode == .number || s.name.isEmpty ? "\(s.channel)" : "\(s.channel) \(s.name)")
-            }
+            for n in nodes { setText(n.label, mode == .number ? "\(n.speaker.channel)" : n.speaker.longLabel) }
             for label in objectLabels { label.isHidden = mode == .number }
         }
 
@@ -331,18 +329,25 @@ struct SpeakerSceneView: NSViewRepresentable {
             guard let props else { return }
             let levels = props.levelOverride ?? props.audio.levels
             for (i, n) in nodes.enumerated() {
-                let db = channelDb(levels, n.speaker.channel)
-                let lineOn = props.showLines && db > LevelThreshold.line
+                let db = n.speaker.db(levels, applyGain: props.applyGain)
+                let lineOn = props.showLines && !n.speaker.mute && db > LevelThreshold.line
                 if abs(db - lastDb[i]) < 0.25 && n.line.isHidden == !lineOn { continue }
                 lastDb[i] = db
 
-                let amount = levelAmount(db)
                 let color = levelColor(db)
-                let dim: CGFloat = n.speaker.mute ? 0.35 : 1
-                n.material.diffuse.contents = scaled(color, 0.75 * dim)
-                n.material.emission.contents = scaled(color, amount * dim)
-                let s = 1 + 0.8 * amount
-                n.ball.scale = SCNVector3(s, s, s)
+                if n.speaker.mute {
+                    // Muted: never lit or grown, whatever arrives on the channel. A dim tint (plus the
+                    // red ×) still shows that there is signal.
+                    n.material.diffuse.contents = scaled(color, 0.26)
+                    n.material.emission.contents = NSColor.black
+                    n.ball.scale = SCNVector3(1, 1, 1)
+                } else {
+                    let amount = levelAmount(db)
+                    n.material.diffuse.contents = scaled(color, 0.75)
+                    n.material.emission.contents = scaled(color, amount)
+                    let s = 1 + 0.8 * amount
+                    n.ball.scale = SCNVector3(s, s, s)
+                }
                 n.line.isHidden = !lineOn
                 if lineOn { n.line.geometry?.firstMaterial?.diffuse.contents = color }
             }
@@ -443,6 +448,17 @@ struct SceneLoadStatus: View {
     }
 }
 
+extension Speaker {
+    /// Ch + Name label: "9 U1" and, when non-zero, Gain / Delay on a second line ("−1.5 dB · 1.2 ms").
+    var longLabel: String {
+        var extras: [String] = []
+        if gainDb != 0 { extras.append(String(format: "%+.1f dB", gainDb).replacingOccurrences(of: "-", with: "−")) }
+        if delayMs != 0 { extras.append(String(format: "%.1f ms", delayMs)) }
+        let base = name.isEmpty ? "\(channel)" : "\(channel) \(name)"
+        return extras.isEmpty ? base : base + "\n" + extras.joined(separator: " · ") // two short lines overlap less
+    }
+}
+
 /// Muted colors so the other objects stay behind the speakers visually.
 private enum ObjectStyle {
     static let surface = NSColor(srgbRed: 0.45, green: 0.62, blue: 0.85, alpha: 1)   // screen / surface
@@ -515,7 +531,7 @@ private func lines(_ segments: [(SIMD3<Double>, SIMD3<Double>)], color: NSColor)
     return SCNNode(geometry: geometry)
 }
 
-/// Flat text `height` meters tall, horizontally centred on its node, baseline at y = 0.
+/// Flat text `height` meters tall per line, horizontally centred on its node, bottom at y = 0.
 private func textNode(_ string: String, height: CGFloat, color: NSColor) -> SCNNode {
     let text = SCNText(string: string, extrusionDepth: 0)
     text.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
@@ -532,5 +548,5 @@ private func setText(_ node: SCNNode, _ string: String) {
     guard let text = node.geometry as? SCNText else { return }
     text.string = string
     let (min, max) = text.boundingBox
-    node.pivot = SCNMatrix4MakeTranslation((min.x + max.x) / 2, 0, 0)
+    node.pivot = SCNMatrix4MakeTranslation((min.x + max.x) / 2, min.y, 0) // extra lines grow upwards
 }

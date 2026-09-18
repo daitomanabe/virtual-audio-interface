@@ -8,6 +8,14 @@ func channelDb(_ levels: [Float], _ channel: Int) -> Float {
     channel >= 1 && channel <= levels.count ? dbFS(levels[channel - 1]) : -120
 }
 
+extension Speaker {
+    /// Channel level in dBFS, plus the SPEAKER Gain when `applyGain` (the level expected at the
+    /// speaker). Mute is not applied here; callers show muted speakers their own way.
+    func db(_ levels: [Float], applyGain: Bool) -> Float {
+        channelDb(levels, channel) + (applyGain ? Float(gainDb) : 0)
+    }
+}
+
 enum LevelThreshold {
     static let signal: Float = -60  // "signal present"
     static let line: Float = -40    // sounding lines in the 3D view
