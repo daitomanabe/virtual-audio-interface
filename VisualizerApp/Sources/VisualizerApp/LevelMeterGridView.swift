@@ -67,6 +67,10 @@ struct LevelMeterGridView: View {
     }
     private var mutedChannels: Set<Int> { Set(speakers.filter(\.mute).map(\.channel)) }
     private var disabledChannels: Set<Int> { Set(speakers.filter { !$0.active }.map(\.channel)) }
+    /// Channels where no speaker can sound (every speaker on it is muted or disabled).
+    private var silentChannels: Set<Int> {
+        Set(Dictionary(grouping: speakers, by: \.channel).filter { $0.value.allSatisfy { $0.mute || !$0.active } }.keys)
+    }
 
     /// The selection shown in the mode picker: forced to `.all` (and disabled)
     /// when no scene is loaded, regardless of the persisted preference.
@@ -194,7 +198,8 @@ struct LevelMeterGridView: View {
                                width: meterWidth, height: Self.rowHeight)
             drawMeter(context: context, rect: rect, channel: ch, isActive: ch <= activeCount,
                       muted: section.showBadges && mutedChannels.contains(ch),
-                      disabled: section.showBadges && disabledChannels.contains(ch))
+                      disabled: section.showBadges && disabledChannels.contains(ch),
+                      dimmed: section.showBadges && silentChannels.contains(ch))
         }
     }
 
@@ -214,7 +219,7 @@ struct LevelMeterGridView: View {
     }
 
     private func drawMeter(context: GraphicsContext, rect: CGRect, channel ch: Int, isActive: Bool,
-                            muted: Bool = false, disabled: Bool = false) {
+                            muted: Bool = false, disabled: Bool = false, dimmed: Bool = false) {
         var layer = context
         let meterRect = rect.insetBy(dx: 2, dy: 2)
         let lv = levels(for: ch)
@@ -224,7 +229,7 @@ struct LevelMeterGridView: View {
         let hasSignal = peakDB > AudioLevelsModel.signalThresholdDB
         let isUnassigned = isActive && hasSignal && assigned != nil && !(assigned?.contains(ch) ?? true)
 
-        layer.opacity = (isActive ? 1.0 : 0.3) * (muted || disabled ? 0.5 : 1.0)
+        layer.opacity = (isActive ? 1.0 : 0.3) * (dimmed ? 0.5 : 1.0)
 
         // Clip LED (top, latched).
         let ledRect = CGRect(x: meterRect.midX - Self.ledSize / 2, y: meterRect.minY,
