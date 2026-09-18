@@ -10,3 +10,4 @@ dist/
 Tools/ssdcheck
 Tools/halharness
 Tools/*.dSYM/
+Tools/tsgcheck
