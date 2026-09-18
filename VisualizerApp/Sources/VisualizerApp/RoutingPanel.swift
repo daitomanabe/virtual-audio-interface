@@ -220,8 +220,8 @@ private struct SpeakerTable: View {
             TableColumn("x, y, z (m)") { s in
                 Text(String(format: "%.2f, %.2f, %.2f", s.position.x, s.position.y, s.position.z)).monospacedDigit()
             }.width(min: 90, ideal: 116)
-            TableColumn("Gain") { Text(String(format: "%.1f", $0.gainDb)).monospacedDigit() }.width(34)
-            TableColumn("Delay") { Text(String(format: "%.1f", $0.delayMs)).monospacedDigit() }.width(34)
+            TableColumn("Gain") { Text(String(format: "%.1f", $0.gainDb)).monospacedDigit() }.width(40)
+            TableColumn("Delay") { Text(String(format: "%.1f", $0.delayMs)).monospacedDigit() }.width(40)
             TableColumn("Mute") { Text($0.mute ? "M" : "").bold().foregroundStyle(.red) }.width(36)
             TableColumn("En") { Text($0.active ? "1" : "0").foregroundStyle($0.active ? Color.secondary : Color.orange) }.width(20)
         }
