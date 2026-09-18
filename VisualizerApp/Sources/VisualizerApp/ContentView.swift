@@ -106,7 +106,7 @@ struct ContentView: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         .fixedSize()
-        Toggle("発音ライン (> \(Int(LevelThreshold.line)) dBFS)", isOn: $showLines)
+        Toggle("Sounding lines (> \(Int(LevelThreshold.line)) dBFS)", isOn: $showLines)
         Toggle("Scene objects", isOn: $showObjects)
             .help("Screens, LED walls, projectors, cameras, boxes, FOVs and other SSD objects")
         Toggle("Apply SSD gain", isOn: $applyGain)
@@ -153,6 +153,6 @@ private struct DriverStatusBar: View {
             Button("Driver OFF") { driver.turnOff() }
                 .disabled(driver.busy || s.isOff)
         }
-        .help(driver.message.isEmpty ? (s.outdated ? "インストール済みドライバがアプリ同梱版と異なります" : s.isOn ? "Driver ON" : s.isOff ? "Driver OFF" : "不整合") : driver.message)
+        .help(driver.message.isEmpty ? (s.outdated ? "The installed driver differs from the app's" : s.isOn ? "Driver ON" : s.isOff ? "Driver OFF" : "Driver state inconsistent") : driver.message)
     }
 }

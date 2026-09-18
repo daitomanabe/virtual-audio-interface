@@ -49,7 +49,7 @@ struct LevelMeterGridView: View {
     private static let minMeterWidth: CGFloat = 36
     private static let rowHeight: CGFloat = 116
     private static let ledSize: CGFloat = 6
-    private static let topAreaHeight: CGFloat = 16   // clip LED + "未割当"
+    private static let topAreaHeight: CGFloat = 16   // clip LED + "NO SPK"
     private static let bottomAreaHeight: CGFloat = 32 // channel number + peak dB + speaker label
     private static let dbMin: Float = -60
     private static let dbMax: Float = 0
@@ -238,9 +238,9 @@ struct LevelMeterGridView: View {
                               width: Self.ledSize, height: Self.ledSize)
         layer.fill(Path(ellipseIn: ledRect), with: .color(isClipped ? Color(nsColor: Theme.levelRed) : Color(nsColor: Theme.canvasLine)))
 
-        // "未割当" marker.
+        // "NO SPK" marker: signal on a channel without a speaker.
         if isUnassigned {
-            layer.draw(Text("未割当").font(Theme.Fonts.meterBadge).foregroundColor(Color(nsColor: Theme.error)),
+            layer.draw(Text("NO SPK").font(Theme.Fonts.meterBadge).foregroundColor(Color(nsColor: Theme.error)),
                        at: CGPoint(x: meterRect.midX, y: meterRect.minY + Self.ledSize + 6), anchor: .top)
         }
 

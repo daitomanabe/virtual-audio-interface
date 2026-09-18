@@ -16,30 +16,30 @@ struct RoutingIssue: Identifiable {
 
         for ch in levels.indices.map({ $0 + 1 }) where sounding(ch) && byChannel[ch] == nil {
             out.append(.init(id: "unassigned-\(ch)", severity: .error,
-                             text: "Ch \(ch): 信号あり (\(dbText(ch))) だが割り当てスピーカーなし", channel: ch))
+                             text: "Ch \(ch): signal (\(dbText(ch))) but no speaker assigned", channel: ch))
         }
         for (ch, list) in byChannel.sorted(by: { $0.key < $1.key }) {
             let names = list.map(\.displayName).joined(separator: ", ")
             if ch > deviceChannels {
                 out.append(.init(id: "range-\(ch)", severity: .error,
-                                 text: "Ch \(ch) (\(names)): デバイスの有効チャンネル数 \(deviceChannels) を超えている", channel: ch))
+                                 text: "Ch \(ch) (\(names)): beyond the device's \(deviceChannels) active channels", channel: ch))
             }
             if list.count > 1 {
                 out.append(.init(id: "shared-\(ch)", severity: .info,
-                                 text: "Ch \(ch): スピーカー \(list.count) 本で共有 (\(names))", channel: ch))
+                                 text: "Ch \(ch): shared by \(list.count) speakers (\(names))", channel: ch))
             }
             guard sounding(ch) else { continue }
             for s in list where s.mute {
                 out.append(.init(id: "mute-\(s.id)", severity: .warning,
-                                 text: "Ch \(ch) (\(s.displayName)): Mute なのに信号あり (\(dbText(ch)))", channel: ch))
+                                 text: "Ch \(ch) (\(s.displayName)): muted but carries signal (\(dbText(ch)))", channel: ch))
             }
             for s in list where !s.active {
                 out.append(.init(id: "disabled-\(s.id)", severity: .warning,
-                                 text: "Ch \(ch) (\(s.displayName)): Enabled=0 (親を含む) なのに信号あり (\(dbText(ch)))", channel: ch))
+                                 text: "Ch \(ch) (\(s.displayName)): disabled (Enabled 0 on it or a parent) but carries signal (\(dbText(ch)))", channel: ch))
             }
         }
         for (i, w) in parserWarnings.enumerated() {
-            out.append(.init(id: "parser-\(i)", severity: .warning, text: "パーサー警告: \(w)", channel: nil))
+            out.append(.init(id: "parser-\(i)", severity: .warning, text: "Parser: \(w)", channel: nil))
         }
         return out.sorted { ($0.severity.rawValue, $0.channel ?? 0) < ($1.severity.rawValue, $1.channel ?? 0) }
     }
@@ -66,9 +66,9 @@ struct RoutingPanel: View {
             LiveIssues(sceneModel: sceneModel, audio: audio, levelOverride: levelOverride, selectedChannel: $selectedChannel)
             Divider()
             HStack {
-                Text("スピーカー").font(.headline)
+                Text("Speakers").font(Theme.Fonts.heading)
                 Spacer()
-                Toggle("発音中のみ", isOn: $soundingOnly)
+                Toggle("Sounding only", isOn: $soundingOnly)
             }
             if soundingOnly {
                 SoundingSpeakerTable(sceneModel: sceneModel, audio: audio, levelOverride: levelOverride,
@@ -84,16 +84,16 @@ struct RoutingPanel: View {
     @ViewBuilder
     private var sceneInfo: some View {
         if let error = sceneModel.loadError {
-            Text("読込エラー: \(error)").foregroundStyle(Color(nsColor: Theme.error)).textSelection(.enabled)
+            Text("Load error: \(error)").foregroundStyle(Color(nsColor: Theme.error)).textSelection(.enabled)
         }
         let channels = Set(sceneModel.speakers.map(\.channel))
         Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 3) {
-            infoRow("ファイル", sceneModel.path.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "未読込 (Open / ドラッグ&ドロップ)")
-            infoRow("Scene Name", sceneModel.sceneName.isEmpty ? "—" : sceneModel.sceneName)
-            infoRow("スピーカー", "\(sceneModel.speakers.count) 本 / \(channels.count) ch")
-            infoRow("使用チャンネル", channels.isEmpty ? "—" : "\(channels.min()!)–\(channels.max()!)")
+            infoRow("File", sceneModel.path.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "Not loaded (Open… or drop a file)")
+            infoRow("Scene name", sceneModel.sceneName.isEmpty ? "—" : sceneModel.sceneName)
+            infoRow("Speakers", "\(sceneModel.speakers.count) on \(channels.count) channels")
+            infoRow("Channels used", channels.isEmpty ? "—" : "\(channels.min()!)–\(channels.max()!)")
             if let v = sceneModel.reviewVolume {
-                infoRow("REVIEW_VOLUME", String(format: "W %.2f × D %.2f × H %.2f m (文脈情報のみ)", v.x, v.y, v.z))
+                infoRow("Review volume", String(format: "W %.2f × D %.2f × H %.2f m (context only)", v.x, v.y, v.z))
             }
         }
         .font(.callout)
@@ -119,11 +119,11 @@ private struct LiveIssues: View {
         let issues = RoutingIssue.check(speakers: sceneModel.speakers, parserWarnings: sceneModel.warnings,
                                         levels: levelOverride ?? audio.levels, deviceChannels: deviceChannels)
         VStack(alignment: .leading, spacing: 4) {
-            Text(audio.status.available ? "デバイス: \(deviceChannels) ch 有効" : "デバイス: ドライバ未接続 (\(deviceChannels) ch として判定)")
+            Text(audio.status.available ? "Device: \(deviceChannels) channels active" : "Device: driver not connected (checking against \(deviceChannels) channels)")
                 .font(.callout).foregroundStyle(.secondary)
             Divider()
             HStack {
-                Text("警告").font(.headline)
+                Text("Warnings").font(Theme.Fonts.heading)
                 Text("\(issues.count)")
                     .font(.caption.bold().monospacedDigit())
                     .padding(.horizontal, 7).padding(.vertical, 1)
@@ -131,7 +131,7 @@ private struct LiveIssues: View {
                     .foregroundStyle(.white)
             }
             if issues.isEmpty {
-                Text("問題なし").foregroundStyle(.secondary).font(.callout)
+                Text("No issues").foregroundStyle(.secondary).font(.callout)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 3) {
@@ -169,7 +169,7 @@ private struct LiveIssues: View {
     }
 }
 
-/// The "発音中のみ" variant: the row set itself depends on levels, so this one observes.
+/// The "Sounding only" variant: the row set itself depends on levels, so this one observes.
 /// With Apply SSD gain, "sounding" means input + Gain above the threshold and not muted.
 private struct SoundingSpeakerTable: View {
     @ObservedObject var sceneModel: SSDSceneModel

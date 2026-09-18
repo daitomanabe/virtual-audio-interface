@@ -47,7 +47,7 @@ final class DriverController: ObservableObject {
 
     func turnOn() {
         guard let src = bundledDriver else {
-            message = "ドライバが同梱されていません (build_app.sh でビルドした .app から起動してください)"
+            message = "No driver bundled with this app. Launch the .app built by build_app.sh."
             return
         }
         let dst = Self.shq(Self.halPath)
@@ -62,7 +62,7 @@ final class DriverController: ObservableObject {
 
     private func run(label: String, script: String, done: @escaping (Snapshot) -> Bool) {
         busy = true
-        message = "\(label): 実行中…"
+        message = "\(label): restarting coreaudiod…"
         if let error = Self.runPrivileged(script) {
             busy = false
             refresh()
@@ -74,19 +74,19 @@ final class DriverController: ObservableObject {
             // OFF must leave no driver process behind: SIGKILL stragglers by exact PID.
             if label == "OFF", !s.helperPIDs.isEmpty {
                 let pids = s.helperPIDs.map(String.init).joined(separator: " ")
-                message = "OFF: ヘルパープロセスが残存 (PID \(pids))、強制終了します"
+                message = "OFF: helper process still running (PID \(pids)), force-quitting it"
                 if let error = Self.runPrivileged("/bin/kill -9 \(pids); true") {
-                    message = "OFF: 強制終了に失敗: \(error)"
+                    message = "OFF: force quit failed: \(error)"
                 }
                 s = await Self.waitFor(seconds: 5, done)
             }
             snapshot = s
             busy = false
             if done(s) {
-                message = label == "ON" ? "ON: デバイス登録とドライバプロセスを確認しました"
-                                        : "OFF: ドライバプロセスの終了とデバイス消滅を確認しました"
+                message = label == "ON" ? "ON: driver process and Core Audio device are up"
+                                        : "OFF: driver process has quit and the device is gone"
             } else {
-                message = "\(label): 状態が一致しません (installed=\(s.installed), PID=\(s.helperPIDs), device=\(s.devicePresent))"
+                message = "\(label): unexpected state (installed=\(s.installed), PID=\(s.helperPIDs), device=\(s.devicePresent))"
             }
         }
     }
@@ -143,8 +143,8 @@ final class DriverController: ObservableObject {
         var err: NSDictionary?
         NSAppleScript(source: "do shell script \"\(escaped)\" with administrator privileges")?.executeAndReturnError(&err)
         guard let err else { return nil }
-        if (err[NSAppleScript.errorNumber] as? Int) == -128 { return "キャンセルされました" }
-        return err[NSAppleScript.errorMessage] as? String ?? "不明なエラー"
+        if (err[NSAppleScript.errorNumber] as? Int) == -128 { return "Cancelled" }
+        return err[NSAppleScript.errorMessage] as? String ?? "Unknown error"
     }
 
     static func shq(_ s: String) -> String { "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'" }
