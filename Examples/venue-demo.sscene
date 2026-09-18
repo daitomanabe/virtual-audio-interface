@@ -16,7 +16,7 @@ AngleUnit	degree
 [OBJECT]
 # ID	Type	Name	Parent	X	Y	Z	Yaw	Pitch	Roll	Enabled
 1	speaker	L	none	-4.5	5.5	3	0	0	0	1
-2	speaker	C	none	0	5.7	5.9	0	0	0	1
+2	speaker	C	none	0	5.9	5.9	0	0	0	1
 3	speaker	R	none	4.5	5.5	3	0	0	0	1
 4	speaker	SL	none	-5.4	-3.2	2.5	0	0	0	1
 5	speaker	SR	none	5.4	-3.2	2.5	0	0	0	1
@@ -26,7 +26,7 @@ AngleUnit	degree
 # Front screen on the back edge of the stage, upright and facing the audience (-Y).
 scr	screen	Main screen	none	0	6	3.2	0	90	0	1
 stage	stage	Stage	none	0	4.75	0.4	0	0	0	1
-floor	surface	Floor projection	none	0	0	0.01	0	0	0	1
+floor	surface	Floor projection	none	0	1.2	0.01	0	0	0	1
 # Left LED wall on a rig: the rig's Yaw 90 turns the upright LED (0, 90, 0) to face world +X.
 rigL	truss	Left rig	none	-6	1	0	90	0	0	1
 ledL	led	LED left	rigL	0	0	2.2	0	90	0	1
@@ -35,12 +35,12 @@ ledR	led	LED right	none	6	1	2.2	-90	0	-90	1
 # Projector at screen height behind the audience, looking at the screen (+Y).
 pj	projector	Projector	none	0	-5	3.2	0	90	0	1
 # Tracking camera looking straight down at the floor (zero pose).
-camTop	camera	Overhead camera	none	0	0	5.5	0	0	0	1
+camTop	camera	Overhead camera	none	0	1.2	5.5	0	0	0	1
 # Stage camera facing the audience (-Y), tilted 15 degrees down.
-camStage	camera	Stage camera	none	0	5.2	3.8	180	-75	0	1
+camStage	camera	Stage camera	none	2.5	5.2	3.8	180	-75	0	1
 camSpare	camera	Spare camera	none	-2	-5	3.2	0	90	0	0
 foh	desk	FOH	none	0	-3.5	0.5	0	0	0	1
-mic	microphone	Stage mic	none	0	4.2	1.6	0	0	0	1
+mic	microphone	Stage mic	none	-2.5	4.2	1.6	0	0	0	1
 
 [SPEAKER]
 # ID	Channel	Gain	Delay	Mute
@@ -59,7 +59,7 @@ scr	8	4.5
 
 [SURFACE]
 # ID	Width	Height
-floor	8	6
+floor	8	4.6
 
 [LED]
 # ID	Width	Height	PixelWidth	PixelHeight
@@ -76,7 +76,7 @@ pj	out1	scr	1920	1080
 
 [CAMERA]
 # ID	FovH	FovV	ResolutionX	ResolutionY
-camTop	70	55	1920	1080
+camTop	70	45	1920	1080
 camStage	60	34	1920	1080
 camSpare	60	34	1920	1080
 
@@ -89,7 +89,7 @@ foh	2.4	1	1
 # ID	Horizontal	Vertical	Distance	Note
 # The projector's throw: 11 m to the screen, 2*atan(4/11) x 2*atan(2.25/11), i.e. exactly the 8 x 4.5 m screen.
 pj	39.97	23.12	11	throw
-camTop	70	55	5.49	floor coverage
+camTop	70	45	5.49	floor coverage
 
 [REVIEW_VOLUME]
 # Width	Depth	Height	Status

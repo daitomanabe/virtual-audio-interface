@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var camera: CameraPreset
     @State private var labelMode: LabelMode
     @State private var showLines: Bool
+    @State private var showObjects = true
     @State private var selectedChannel: Int?
 
     private static let lastPathKey = "lastScenePath"
@@ -41,7 +42,9 @@ struct ContentView: View {
                 HSplitView {
                     SpeakerSceneView(sceneModel: sceneModel, audio: audioLevels, levelOverride: levelOverride,
                                      selectedChannel: $selectedChannel, camera: camera,
-                                     showLines: showLines, labelMode: labelMode)
+                                     showLines: showLines, labelMode: labelMode,
+                                     showObjects: showObjects)
+                        .overlay(alignment: .topLeading) { SceneLoadStatus(sceneModel: sceneModel) }
                         .frame(minWidth: 360, maxWidth: .infinity)
                     RoutingPanel(sceneModel: sceneModel, audio: audioLevels, levelOverride: levelOverride,
                                  selectedChannel: $selectedChannel)
@@ -102,6 +105,8 @@ struct ContentView: View {
         .labelsHidden()
         .fixedSize()
         Toggle("発音ライン (> \(Int(LevelThreshold.line)) dBFS)", isOn: $showLines)
+        Toggle("Scene objects", isOn: $showObjects)
+            .help("Screens, LED walls, projectors, cameras, boxes, FOVs and other SSD objects")
         Picker("Labels", selection: $labelMode) {
             ForEach(LabelMode.allCases) { Text($0.rawValue).tag($0) }
         }
