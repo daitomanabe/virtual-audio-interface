@@ -2,7 +2,7 @@ import SwiftUI
 
 /// App-configurable settings (channel count / sample rate, written to the
 /// driver via shm) plus the host-decided values the driver publishes
-/// read-only. See README "設定可能パラメータ / ホスト決定パラメータ".
+/// read-only. See README "Settings and host-decided values".
 struct SettingsView: View {
     @ObservedObject var model: AudioLevelsModel
     @ObservedObject var driver: DriverController
@@ -14,31 +14,33 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("ドライバ") {
+            Section("Driver") {
                 let s = driver.snapshot
-                LabeledContent("配置", value: !s.installed ? "なし" : s.outdated ? "あり (アプリ同梱版と異なる → Driver Update で更新)" : "あり (アプリ同梱版と一致)")
-                LabeledContent("PID", value: s.helperPIDs.isEmpty ? "なし" : "PID " + s.helperPIDs.map(String.init).joined(separator: ", "))
-                LabeledContent("CoreAudio デバイス", value: s.devicePresent ? "登録あり" : "なし")
+                LabeledContent("Installed", value: !s.installed ? "No"
+                                : s.outdated ? "Yes, differs from the app's driver (Driver menu → Update)" : "Yes, matches the app")
+                LabeledContent("Helper process", value: s.helperPIDs.isEmpty ? "Not running"
+                                : "PID " + s.helperPIDs.map(String.init).joined(separator: ", "))
+                LabeledContent("Core Audio device", value: s.devicePresent ? "Present" : "Not present")
                 if !driver.message.isEmpty {
-                    LabeledContent("直近のメッセージ", value: driver.message)
+                    LabeledContent("Last message", value: driver.message)
                 }
-                Text("ON/OFF は管理者パスワードが必要です。coreaudiod を再起動するため、他のオーディオデバイスも一瞬途切れます。")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text("Turning the driver on or off asks for an administrator password and restarts coreaudiod, so every audio device drops out for a moment.")
+                    .font(Theme.Fonts.caption).foregroundStyle(.secondary)
             }
 
-            Section("設定 (アプリ → ドライバ)") {
+            Section("Device settings (app → driver)") {
                 Stepper(value: $requestedChannelCount, in: 1...128) {
                     HStack {
-                        Text("チャンネル数")
+                        Text("Channels")
                         Spacer()
                         TextField("", value: $requestedChannelCount, format: .number)
                             .frame(width: 60)
                             .multilineTextAlignment(.trailing)
                     }
                 }
-                Picker("サンプルレート", selection: $requestedSampleRate) {
+                Picker("Sample rate", selection: $requestedSampleRate) {
                     ForEach(Self.supportedSampleRates, id: \.self) { rate in
-                        Text("\(Int(rate)) Hz").tag(rate)
+                        Text(verbatim: "\(Int(rate)) Hz").tag(rate)   // 48000 Hz, like the values below
                     }
                 }
                 Button("Apply") {
@@ -46,25 +48,26 @@ struct SettingsView: View {
                 }
             }
 
-            Section("ホスト決定値 (読み取り専用)") {
+            Section("Host-decided values (read-only)") {
                 if !model.status.available {
-                    Text("ドライバ未接続 (共有メモリが見つかりません)").foregroundStyle(.secondary)
+                    Text("Driver not connected (shared memory not found)").foregroundStyle(.secondary)
                 } else {
                     let s = model.status
-                    LabeledContent("実効サンプルレート", value: "\(Int(s.sampleRate)) Hz")
-                    LabeledContent("IOバッファフレーム数", value: bufferSizeLabel(s))
+                    LabeledContent("Sample rate", value: "\(Int(s.sampleRate)) Hz")
+                    LabeledContent("IO buffer", value: bufferSizeLabel(s))
                     LabeledContent("Running", value: s.isRunning ? "Yes" : "No")
-                    LabeledContent("接続クライアント数", value: "\(s.clientCount)")
-                    LabeledContent("ZeroTimeStampPeriod", value: "\(s.zeroTimeStampPeriod) frames")
-                    LabeledContent("ホスト要求レート", value: s.hostRequestedSampleRate > 0 ? "\(Int(s.hostRequestedSampleRate)) Hz" : "(未要求)")
-                    LabeledContent("設定適用状況", value: s.configAppliedCounter == s.configCounter ? "適用済み" : "適用待ち…")
+                    LabeledContent("Clients", value: "\(s.clientCount)")
+                    LabeledContent("Zero timestamp period", value: "\(s.zeroTimeStampPeriod) frames")
+                    LabeledContent("Host-requested rate", value: s.hostRequestedSampleRate > 0 ? "\(Int(s.hostRequestedSampleRate)) Hz" : "Not requested")
+                    LabeledContent("Settings applied", value: s.configAppliedCounter == s.configCounter ? "Yes" : "Pending…")
                 }
             }
 
             Text(Self.versionString)
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(Theme.Fonts.caption).foregroundStyle(.secondary)
         }
         .formStyle(.grouped)
+        .monospacedDigit()
         .onAppear {
             requestedChannelCount = model.status.available ? Int(model.status.channelCount) : 128
             requestedSampleRate = model.status.available && model.status.sampleRate > 0 ? model.status.sampleRate : 48000

@@ -14,11 +14,17 @@ enum Main {
             TestSignalEngine.runCLI(Array(args[(i + 1)...])) // plays without a window, then exits
         }
         if let i = args.firstIndex(of: "--docshot") {
-            guard i + 1 < args.count else {
-                print("usage: VisualizerApp --docshot <outdir> [scene.sscene]")
+            func value(_ flag: String) -> String? { args.firstIndex(of: flag).flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : "" } }
+            let appearance = value("--appearance")
+            let size = value("--size").map { $0.split(separator: "x").compactMap { Int($0) } }
+            guard i + 1 < args.count, !args[i + 1].hasPrefix("--"),
+                  appearance == nil || appearance == "light" || appearance == "dark",
+                  size == nil || size!.count == 2 else {
+                print("usage: VisualizerApp --docshot <outdir> [scene.sscene] [--appearance light|dark] [--size WxH]")
                 exit(2)
             }
-            DocShot.run(outDir: args[i + 1], scenePath: args.count > i + 2 ? args[i + 2] : nil)
+            DocShot.run(outDir: args[i + 1], scenePath: scenePathArgument, appearance: appearance,
+                        size: size.map { NSSize(width: $0[0], height: $0[1]) } ?? NSSize(width: 1400, height: 900))
         } else {
             let app = NSApplication.shared
             app.delegate = AppDelegate.shared
@@ -73,6 +79,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let main = NSMenu()
         main.addItem(menu("Virtual Audio Interface", [
+            item("About Virtual Audio Interface", #selector(NSApplication.orderFrontStandardAboutPanel(_:))),
+            .separator(),
             item("Hide Virtual Audio Interface", #selector(NSApplication.hide(_:)), "h"),
             .separator(),
             item("Quit Virtual Audio Interface", #selector(NSApplication.terminate(_:)), "q"),
@@ -94,7 +102,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// `VisualizerApp --docshot <outdir> [scene.sscene]`: self-captures each tab to PNG and exits.
+/// `VisualizerApp --docshot <outdir> [scene.sscene] [--appearance light|dark] [--size WxH]`: self-captures
+/// each tab to PNG and exits. The window is 1400x900 pt unless `--size` says otherwise (content minimum 1000x640).
 /// A background launch never gets a WindowGroup window, so this hosts ContentView in a
 /// plain NSWindow; orderFrontRegardless is allowed in this mode only.
 @MainActor
@@ -111,7 +120,7 @@ enum DocShot {
         return levels
     }
 
-    static func run(outDir: String, scenePath: String?) {
+    static func run(outDir: String, scenePath: String?, appearance: String?, size: NSSize) {
         let dir = URL(fileURLWithPath: outDir, isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let logURL = dir.appendingPathComponent("docshot.log")
@@ -126,6 +135,9 @@ enum DocShot {
         }
 
         NSApplication.shared.setActivationPolicy(.regular)
+        if let appearance {
+            NSApplication.shared.appearance = NSAppearance(named: appearance == "light" ? .aqua : .darkAqua)
+        }
         let audio = AudioLevelsModel()
         let driver = DriverController()
         let path = scenePath.map { URL(fileURLWithPath: $0).path }
@@ -159,15 +171,15 @@ enum DocShot {
                                        labelMode: s.labels, docshot: true).id(i))
         }
 
-        let window = NSWindow(contentRect: NSRect(x: 80, y: 80, width: 1400, height: 900),
+        let window = NSWindow(contentRect: NSRect(origin: NSPoint(x: 80, y: 80), size: size),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable],
                               backing: .buffered, defer: false)
-        window.title = "Virtual Audio Visualizer (docshot)"
+        window.title = "Virtual Audio Interface"
         window.isReleasedWhenClosed = false
         let host = NSHostingView(rootView: root(0))
         window.contentView = host
         window.orderFrontRegardless()
-        log("docshot: window \(window.windowNumber), scene \(path ?? "(last opened)")")
+        log("docshot: window \(window.windowNumber), scene \(path ?? "(last opened)"), appearance \(appearance ?? "system")")
 
         Task { @MainActor in
             for (i, shot) in shots.enumerated() {

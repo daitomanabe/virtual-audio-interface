@@ -7,7 +7,7 @@ enum CameraPreset: String, CaseIterable, Identifiable {
 }
 
 enum LabelMode: String, CaseIterable, Identifiable {
-    case number = "Ch", numberAndName = "Ch + Name"
+    case number = "Channel", numberAndName = "Channel + name"
     var id: Self { self }
 }
 
@@ -33,7 +33,7 @@ struct SpeakerSceneView: NSViewRepresentable {
         view.scene = SCNScene()
         view.scene?.rootNode.addChildNode(c.content)
         view.scene?.rootNode.addChildNode(c.objectRoot)
-        view.backgroundColor = NSColor(white: 0.07, alpha: 1)
+        view.backgroundColor = Theme.canvas
         view.antialiasingMode = .multisampling4X
         view.autoenablesDefaultLighting = true
         c.cameraNode.camera = SCNCamera()
@@ -94,6 +94,7 @@ struct SpeakerSceneView: NSViewRepresentable {
         var timer: Timer?
         var nodes: [SpeakerNodes] = []
         var objectLabels: [SCNNode] = []
+        var axisNodes: [(axis: SCNNode, label: SCNNode)] = []  // X, Y, Z
         var lastDb: [Float] = []
         var generation = -1
         var framing = -1
@@ -102,6 +103,9 @@ struct SpeakerSceneView: NSViewRepresentable {
         var selected: Int? = -1           // -1 = not applied yet (channels are >= 1)
         var lo = SIMD3<Double>(-1, -1, 0), hi = SIMD3<Double>(1, 1, 1)  // current scene (grid)
         var frameLo = SIMD3<Double>(-1, -1, 0), frameHi = SIMD3<Double>(1, 1, 1) // what the camera framed
+        /// Scale of balls, labels, listener and axes: 1 for a 12 m floor grid, so they keep roughly the
+        /// same size on screen in a small room and in a hall.
+        var glyph: CGFloat = 1
 
         func startTimer() {
             let t = Timer(timeInterval: 1.0 / 30.0, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
@@ -117,13 +121,14 @@ struct SpeakerSceneView: NSViewRepresentable {
             nodes = []
             objectLabels = []
             let others = objects.filter { $0.type != "speaker" }
-            lo = .zero; hi = .zero                      // bounds include the listener at the origin
+            lo = [-3, -3, 0]; hi = [3, 3, 0]            // the listener's surroundings, even for an empty scene
             for p in speakers.map(\.position) + others.flatMap(extent) {
                 lo = pointwiseMin(lo, p); hi = pointwiseMax(hi, p)
             }
             // Widen x/y to whole meters + 1 so the floor grid (and the axes at its corner) are framed too.
             lo = [floor(lo.x) - 1, floor(lo.y) - 1, lo.z]
             hi = [ceil(hi.x) + 1, ceil(hi.y) + 1, hi.z]
+            glyph = CGFloat(min(max(max(hi.x - lo.x, hi.y - lo.y) / 12, 0.6), 4))
 
             content.addChildNode(grid())
             content.addChildNode(axes(at: [lo.x, lo.y, 0]))  // grid corner, clear of speakers
@@ -154,7 +159,7 @@ struct SpeakerSceneView: NSViewRepresentable {
             objectRoot.addChildNode(holder)
             var drawn = false
             if let r = o.rect {
-                let color = o.type == "led" ? ObjectStyle.led : ObjectStyle.surface
+                let color = o.type == "led" ? Theme.objectLED : Theme.objectSurface
                 let corners = rectCorners(r)
                 holder.addChildNode(face(corners, color: color.withAlphaComponent(0.12)))
                 // Outline plus a short tick along +Z so the front side is visible.
@@ -173,11 +178,11 @@ struct SpeakerSceneView: NSViewRepresentable {
             if let b = o.box {
                 let c = boxCorners(b)                   // index bits: x, y, z
                 let edges = [(0, 1), (2, 3), (4, 5), (6, 7), (0, 2), (1, 3), (4, 6), (5, 7), (0, 4), (1, 5), (2, 6), (3, 7)]
-                holder.addChildNode(lines(edges.map { (c[$0.0], c[$0.1]) }, color: ObjectStyle.box))
+                holder.addChildNode(lines(edges.map { (c[$0.0], c[$0.1]) }, color: Theme.objectBox))
                 drawn = true
             }
             if let f = o.fov {
-                holder.addChildNode(lines(pyramid(frustumCorners(f.x, f.y, f.z)), color: ObjectStyle.device.withAlphaComponent(0.4)))
+                holder.addChildNode(lines(pyramid(frustumCorners(f.x, f.y, f.z)), color: Theme.objectDevice.withAlphaComponent(0.4)))
                 drawn = true
             }
             if o.type == "camera" || o.type == "projector" {
@@ -187,12 +192,12 @@ struct SpeakerSceneView: NSViewRepresentable {
                 let base = frustumCorners(angles.x, angles.y, 0.35)
                 let top = base[2].y, tick: [(SIMD3<Double>, SIMD3<Double>)] = [
                     ([-0.06, top, -0.35], [0, top + 0.07, -0.35]), ([0, top + 0.07, -0.35], [0.06, top, -0.35])]
-                holder.addChildNode(lines(pyramid(base) + tick, color: ObjectStyle.device))
+                holder.addChildNode(lines(pyramid(base) + tick, color: Theme.objectDevice))
                 drawn = true
             }
             if !drawn {                                // microphone, truss, sensor, ...: a small marker
                 let marker = SCNNode(geometry: SCNSphere(radius: 0.07))
-                marker.geometry?.firstMaterial = flat(ObjectStyle.marker)
+                marker.geometry?.firstMaterial = flat(Theme.objectMarker)
                 holder.addChildNode(marker)
             }
             if let t = o.target, all.indices.contains(t) {  // projector -> target: dotted line
@@ -200,7 +205,7 @@ struct SpeakerSceneView: NSViewRepresentable {
                 let dashes = stride(from: 0.0, to: length, by: 0.2).map { d in
                     (a + (b - a) * (d / length), a + (b - a) * (min(d + 0.1, length) / length))
                 }
-                let line = lines(dashes, color: ObjectStyle.device.withAlphaComponent(0.6))
+                let line = lines(dashes, color: Theme.objectDevice.withAlphaComponent(0.6))
                 if !o.active { line.opacity = 0.3 }
                 objectRoot.addChildNode(line)
             }
@@ -211,8 +216,9 @@ struct SpeakerSceneView: NSViewRepresentable {
             let anchor = SCNNode()
             anchor.position = scenekit(o.world(o.rect.map { [0, -$0.y / 2, 0] } ?? .zero))
             anchor.constraints = [SCNBillboardConstraint()]
-            let label = textNode(o.name.isEmpty ? o.objectID : o.name, height: 0.18, color: ObjectStyle.label)
-            label.position = SCNVector3(0, -0.55, 0)          // clear of a camera glyph pointing down-screen
+            let label = textNode(o.name.isEmpty ? o.objectID : o.name, height: Theme.sceneLabelSmall * glyph,
+                                 color: Theme.canvasTextDim)
+            label.position = SCNVector3(0, -0.55 * glyph, 0)  // clear of a camera glyph pointing down-screen
             anchor.addChildNode(label)
             if !o.active { anchor.opacity = 0.3 }
             objectRoot.addChildNode(anchor)
@@ -222,7 +228,8 @@ struct SpeakerSceneView: NSViewRepresentable {
         private func speakerNodes(_ s: Speaker, index: Int) -> SpeakerNodes {
             let holder = SCNNode()
             holder.position = scenekit(s.position)
-            if !s.active { holder.opacity = 0.3 }      // Enabled=0 (or disabled parent): ghost
+            holder.scale = SCNVector3(glyph, glyph, glyph)
+            if s.silent { holder.opacity = 0.45 }      // Mute or Enabled 0 (or a disabled parent): ghost
             content.addChildNode(holder)
 
             let material = SCNMaterial()
@@ -237,14 +244,14 @@ struct SpeakerSceneView: NSViewRepresentable {
             facing.constraints = [SCNBillboardConstraint()]
             holder.addChildNode(facing)
 
-            let label = textNode("", height: 0.24, color: .white)
+            let label = textNode("", height: Theme.sceneLabel, color: Theme.canvasText)
             label.position = SCNVector3(0, 0.44, 0)          // above the ring and a fully scaled ball
             label.name = String(index)
             label.categoryBitMask = Self.pickMask
             facing.addChildNode(label)
 
             let ring = SCNNode(geometry: SCNTorus(ringRadius: 0.36, pipeRadius: 0.03))
-            ring.geometry?.firstMaterial = flat(.systemCyan)
+            ring.geometry?.firstMaterial = flat(Theme.selection)
             ring.eulerAngles.x = .pi / 2                 // torus axis -> facing +Z (towards camera)
             ring.isHidden = true
             facing.addChildNode(ring)
@@ -252,7 +259,7 @@ struct SpeakerSceneView: NSViewRepresentable {
             if s.mute {
                 for angle in [CGFloat.pi / 4, -CGFloat.pi / 4] {
                     let bar = SCNNode(geometry: SCNBox(width: 0.5, height: 0.06, length: 0.001, chamferRadius: 0))
-                    let m = flat(.systemRed)
+                    let m = flat(Theme.inactive)
                     m.readsFromDepthBuffer = false
                     bar.geometry?.firstMaterial = m
                     bar.renderingOrder = 10
@@ -272,40 +279,64 @@ struct SpeakerSceneView: NSViewRepresentable {
             var segments: [(SIMD3<Double>, SIMD3<Double>)] = []
             for x in stride(from: x0, through: x1, by: 1) { segments.append(([x, y0, 0], [x, y1, 0])) }
             for y in stride(from: y0, through: y1, by: 1) { segments.append(([x0, y, 0], [x1, y, 0])) }
-            return lines(segments, color: NSColor(white: 1, alpha: 0.13))
+            return lines(segments, color: Theme.canvasLine)
         }
 
+        /// 1 m (× glyph) gizmo with its labels beside the tips (see `showAxes`).
         private func axes(at origin: SIMD3<Double>) -> SCNNode {
             let node = SCNNode()
+            node.position = scenekit(origin)
+            node.scale = SCNVector3(glyph, glyph, glyph)
+            axisNodes = []
             let axes: [(SIMD3<Double>, NSColor, String)] = [
-                ([1, 0, 0], .systemRed, "+X 右"), ([0, 1, 0], .systemGreen, "+Y 前方"), ([0, 0, 1], .systemBlue, "+Z 上"),
+                ([1, 0, 0], Theme.axisX, "+X right"), ([0, 1, 0], Theme.axisY, "+Y front"), ([0, 0, 1], Theme.axisZ, "+Z up"),
             ]
             for (direction, color, title) in axes {
-                node.addChildNode(lines([(origin, origin + direction)], color: color))
+                let axis = SCNNode()
+                axis.addChildNode(lines([(.zero, direction)], color: color))
                 let anchor = SCNNode()
-                anchor.position = scenekit(origin + direction * 1.3)
+                anchor.position = scenekit(direction)
                 anchor.constraints = [SCNBillboardConstraint()]
-                anchor.addChildNode(textNode(title, height: 0.2, color: color))
-                node.addChildNode(anchor)
+                let label = textNode(title, height: Theme.sceneLabelSmall, color: color)
+                anchor.addChildNode(label)
+                axis.addChildNode(anchor)
+                node.addChildNode(axis)
+                axisNodes.append((axis, label))
             }
+            showAxes()
             return node
+        }
+
+        /// Hides the axis that points at the camera in an orthographic preset (its label would sit on the
+        /// origin). Labels go to the right of their tips, except Y in perspective: seen from the front left,
+        /// +Y projects just left of +Z, so its label goes left and the two do not collide.
+        private func showAxes() {
+            let hidden: Int? = camera == .side ? 0 : camera == .front ? 1 : camera == .top ? 2 : nil
+            for (i, (axis, label)) in axisNodes.enumerated() {
+                axis.isHidden = i == hidden
+                guard let text = label.geometry else { continue }
+                let (min, max) = text.boundingBox, right = !(i == 1 && camera == .perspective)
+                label.pivot = SCNMatrix4MakeTranslation(right ? min.x : max.x, (min.y + max.y) / 2, 0)
+                label.position = SCNVector3(right ? 0.1 : -0.1, 0, 0)
+            }
         }
 
         private func listener() -> SCNNode {
             let node = SCNNode()
+            node.scale = SCNVector3(glyph, glyph, glyph)
             let disc = SCNNode(geometry: SCNCylinder(radius: 0.3, height: 0.005))
-            disc.geometry?.firstMaterial = flat(NSColor(white: 1, alpha: 0.25))
+            disc.geometry?.firstMaterial = flat(Theme.canvasText.withAlphaComponent(0.25))
             node.addChildNode(disc)
             // The listener faces SSD +Y (front) by definition of the axes; speakers get no arrow.
             let arrow = SCNNode(geometry: SCNCone(topRadius: 0, bottomRadius: 0.1, height: 0.3))
-            arrow.geometry?.firstMaterial = flat(NSColor(white: 0.9, alpha: 1))
+            arrow.geometry?.firstMaterial = flat(Theme.canvasText)
             arrow.position = scenekit([0, 0.15, 0.02])
             arrow.eulerAngles.x = -.pi / 2               // cone tip (+Y) -> SceneKit -Z = SSD +Y
             node.addChildNode(arrow)
             let anchor = SCNNode()
             anchor.position = scenekit([0, -0.3, 0])
             anchor.constraints = [SCNBillboardConstraint()]
-            let label = textNode("listener", height: 0.14, color: NSColor(white: 0.7, alpha: 1))
+            let label = textNode("listener", height: Theme.sceneLabelSmall, color: Theme.canvasTextDim)
             label.position = SCNVector3(0, -0.2, 0)
             anchor.addChildNode(label)
             node.addChildNode(anchor)
@@ -330,15 +361,16 @@ struct SpeakerSceneView: NSViewRepresentable {
             let levels = props.levelOverride ?? props.audio.levels
             for (i, n) in nodes.enumerated() {
                 let db = n.speaker.db(levels, applyGain: props.applyGain)
-                let lineOn = props.showLines && !n.speaker.mute && db > LevelThreshold.line
+                let lineOn = props.showLines && !n.speaker.silent && db > LevelThreshold.line
                 if abs(db - lastDb[i]) < 0.25 && n.line.isHidden == !lineOn { continue }
                 lastDb[i] = db
 
                 let color = levelColor(db)
-                if n.speaker.mute {
-                    // Muted: never lit or grown, whatever arrives on the channel. A dim tint (plus the
-                    // red ×) still shows that there is signal.
-                    n.material.diffuse.contents = scaled(color, 0.26)
+                if n.speaker.silent {
+                    // Muted or disabled: never lit or grown, whatever arrives on the channel. Signal that
+                    // arrives anyway tints it with the warning color, like its routing warning.
+                    let signal = channelDb(levels, n.speaker.channel) > LevelThreshold.signal
+                    n.material.diffuse.contents = signal ? Theme.warning : Theme.inactive
                     n.material.emission.contents = NSColor.black
                     n.ball.scale = SCNVector3(1, 1, 1)
                 } else {
@@ -357,6 +389,7 @@ struct SpeakerSceneView: NSViewRepresentable {
 
         func apply(_ preset: CameraPreset) {
             camera = preset
+            showAxes()
             guard let view, let cam = cameraNode.camera else { return }
             frameLo = lo; frameHi = hi
             let center = (lo + hi) / 2
@@ -397,7 +430,7 @@ struct SpeakerSceneView: NSViewRepresentable {
             }
             let size = frameHi - frameLo
             let (w, h) = camera == .top ? (size.x, size.y) : camera == .front ? (size.x, size.z) : (size.y, size.z)
-            cam.orthographicScale = max(h, w / aspect) / 2 + 0.7  // margin for labels above the top row
+            cam.orthographicScale = max(h, w / aspect) / 2 + 0.7 * glyph  // margin for labels above the top row
         }
 
         @objc func clicked(_ gesture: NSClickGestureRecognizer) {
@@ -415,40 +448,30 @@ struct SpeakerSceneView: NSViewRepresentable {
     }
 }
 
-/// Load state over the 3D view: the parse error (the last valid scene stays on screen while a
-/// half-saved edit fails) and when the file was last read.
+/// The parse error over the 3D view (the last valid scene stays on screen while a half-saved edit
+/// fails); the top bar shows the short form on every tab.
 struct SceneLoadStatus: View {
     @ObservedObject var sceneModel: SSDSceneModel
 
-    private static let time: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm:ss"
-        return f
-    }()
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if let error = sceneModel.loadError {
-                Label(sceneModel.showsLastValidScene ? "Parse error, showing the last valid version: \(error)"
-                                                     : "Could not load: \(error)",
-                      systemImage: "exclamationmark.triangle.fill")
-                    .font(.callout)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8).padding(.vertical, 5)
-                    .background(Color.red.opacity(0.85), in: RoundedRectangle(cornerRadius: 6))
-            }
-            if let date = sceneModel.loadedAt {
-                Text("\(sceneModel.reloaded ? "Reloaded" : "Loaded") \(Self.time.string(from: date))")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
+        if let error = sceneModel.loadError {
+            Label(sceneModel.showsLastValidScene ? "Parse error, showing the last valid version: \(error)"
+                                                 : "Could not load: \(error)",
+                  systemImage: "exclamationmark.triangle.fill")
+                .font(Theme.Fonts.body)
+                .foregroundStyle(.white)
+                .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xs)
+                .background(Color(nsColor: Theme.error).opacity(0.9), in: RoundedRectangle(cornerRadius: Theme.radius))
+                .padding(Theme.Space.s)
+                .allowsHitTesting(false)      // clicks go to the speakers underneath
         }
-        .padding(8)
-        .allowsHitTesting(false)              // clicks go to the speakers underneath
     }
 }
 
 extension Speaker {
+    /// Muted or disabled (Enabled 0 on it or an ancestor): it cannot sound, so it is never lit.
+    var silent: Bool { mute || !active }
+
     /// Ch + Name label: "9 U1" and, when non-zero, Gain / Delay on a second line ("−1.5 dB · 1.2 ms").
     var longLabel: String {
         var extras: [String] = []
@@ -457,16 +480,6 @@ extension Speaker {
         let base = name.isEmpty ? "\(channel)" : "\(channel) \(name)"
         return extras.isEmpty ? base : base + "\n" + extras.joined(separator: " · ") // two short lines overlap less
     }
-}
-
-/// Muted colors so the other objects stay behind the speakers visually.
-private enum ObjectStyle {
-    static let surface = NSColor(srgbRed: 0.45, green: 0.62, blue: 0.85, alpha: 1)   // screen / surface
-    static let led = NSColor(srgbRed: 0.62, green: 0.52, blue: 0.86, alpha: 1)
-    static let device = NSColor(srgbRed: 0.80, green: 0.70, blue: 0.46, alpha: 1)    // camera / projector / FOV
-    static let box = NSColor(white: 0.72, alpha: 0.45)
-    static let marker = NSColor(white: 0.6, alpha: 1)
-    static let label = NSColor(white: 0.62, alpha: 1)
 }
 
 // MARK: - SSD-local shapes (meters)
@@ -534,11 +547,11 @@ private func lines(_ segments: [(SIMD3<Double>, SIMD3<Double>)], color: NSColor)
 /// Flat text `height` meters tall per line, horizontally centred on its node, bottom at y = 0.
 private func textNode(_ string: String, height: CGFloat, color: NSColor) -> SCNNode {
     let text = SCNText(string: string, extrusionDepth: 0)
-    text.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+    text.font = Theme.sceneFont
     text.flatness = 0.2
     text.firstMaterial = flat(color)
     let node = SCNNode(geometry: text)
-    let k = height / 12
+    let k = height / Theme.sceneFont.pointSize
     node.scale = SCNVector3(k, k, k)
     setText(node, string)
     return node

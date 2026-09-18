@@ -19,6 +19,7 @@ struct ContentView: View {
     @State private var showObjects = true
     @State private var applyGain = true
     @State private var selectedChannel: Int?
+    @AppStorage(LevelMeterGridView.modeKey) private var meterMode = MeterMode.all
 
     private static let lastPathKey = "lastScenePath"
 
@@ -38,8 +39,10 @@ struct ContentView: View {
     var body: some View {
         let levelOverride = docshot ? DocShot.syntheticLevels(for: sceneModel.speakers) : nil
         VStack(spacing: 0) {
-            topBar
-            TestSignalBar(speakers: sceneModel.speakers, selectedChannel: $selectedChannel)
+            fileBar
+            Divider()
+            controlBar
+            Divider()
             TabView(selection: $tab) {
                 HSplitView {
                     SpeakerSceneView(sceneModel: sceneModel, audio: audioLevels, levelOverride: levelOverride,
@@ -64,6 +67,7 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 1000, minHeight: 640)
+        .tint(Color(nsColor: Theme.accent))
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             guard let provider = providers.first else { return false }
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
@@ -80,42 +84,118 @@ struct ContentView: View {
         }
     }
 
-    private var topBar: some View {
-        HStack(spacing: 10) {
+    // MARK: row 1: file and driver (the same on every tab)
+
+    private var fileBar: some View {
+        HStack(spacing: Theme.Space.s) {
             Button("Open…") { openPanel() }
                 .keyboardShortcut("o")
-                .help("Open .sscene (⌘O) — or drop a file on the window")
+                .help("Open a .sscene layout (⌘O), or drop one on the window")
             Button("Reload") { sceneModel.reload() }
                 .keyboardShortcut("r")
-                .help("Reload the current file (⌘R)")
+                .help("Read the file again and re-frame the view (⌘R). Saving the file reloads it automatically.")
                 .disabled(sceneModel.path == nil)
-            Spacer()
-            if tab == .monitor { sceneControls }
-            DriverStatusBar(driver: driver)
+            sceneStatus
+                .padding(.leading, Theme.Space.xs)
+            Spacer(minLength: Theme.Space.m)
+            DeviceFormat(audio: audioLevels)
+            DriverMenu(driver: driver)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, Theme.Space.m)
+        .padding(.vertical, Theme.Space.s)
+    }
+
+    private static let time: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f
+    }()
+
+    /// File name plus when it was read, or the load error (the 3D view keeps the full message on screen).
+    @ViewBuilder
+    private var sceneStatus: some View {
+        if let path = sceneModel.path {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                Text(URL(fileURLWithPath: path).lastPathComponent)
+                    .font(Theme.Fonts.heading)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .help(path)
+                if let error = sceneModel.loadError {
+                    Label(sceneModel.showsLastValidScene ? "Parse error, showing the last valid version" : "Could not load",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .font(Theme.Fonts.body)
+                        .foregroundStyle(Color(nsColor: Theme.error))
+                        .lineLimit(1)
+                        .help(error)
+                } else if let date = sceneModel.loadedAt {
+                    Text("\(sceneModel.reloaded ? "Reloaded" : "Loaded") \(Self.time.string(from: date))")
+                        .font(Theme.Fonts.number)
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                }
+            }
+        } else {
+            Text("No layout. Open a .sscene file or drop one on the window.")
+                .font(Theme.Fonts.body)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    // MARK: row 2: the tab's own controls, then the test signal
+
+    private var controlBar: some View {
+        HStack(spacing: Theme.Space.s) {
+            switch tab {
+            case .monitor: monitorControls
+            case .meters: meterControls
+            case .settings: EmptyView()
+            }
+            Spacer(minLength: Theme.Space.m)
+            TestSignalBar(speakers: sceneModel.speakers, selectedChannel: $selectedChannel)
+                .layoutPriority(1)   // its full width before the spacer; only the status text truncates
+        }
+        .controlSize(.small)
+        .padding(.horizontal, Theme.Space.m)
+        .padding(.vertical, Theme.Space.xs + 2)
+        .frame(minHeight: 32)
     }
 
     @ViewBuilder
-    private var sceneControls: some View {
+    private var monitorControls: some View {
         Picker("Camera", selection: $camera) {
             ForEach(CameraPreset.allCases) { Text($0.rawValue).tag($0) }
         }
         .pickerStyle(.segmented)
         .labelsHidden()
         .fixedSize()
-        Toggle("発音ライン (> \(Int(LevelThreshold.line)) dBFS)", isOn: $showLines)
-        Toggle("Scene objects", isOn: $showObjects)
-            .help("Screens, LED walls, projectors, cameras, boxes, FOVs and other SSD objects")
-        Toggle("Apply SSD gain", isOn: $applyGain)
-            .help("Light speakers and level bars by input level + SPEAKER Gain (off: input level)")
-        Picker("Labels", selection: $labelMode) {
-            ForEach(LabelMode.allCases) { Text($0.rawValue).tag($0) }
+        .help("Top: plan view with the front (+Y) up. Front / Side: elevations. Perspective: drag to orbit.")
+        Menu("View") {
+            Toggle("Sounding lines (above \(Int(LevelThreshold.line)) dBFS)", isOn: $showLines)
+            Toggle("Scene objects", isOn: $showObjects)
+            Toggle("Apply SSD gain", isOn: $applyGain)
+            Divider()
+            Picker("Labels", selection: $labelMode) {
+                ForEach(LabelMode.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.inline)
+        }
+        .fixedSize()
+        .help("Sounding lines, scene objects (screens, LED walls, projectors, cameras…), SSD gain, labels")
+    }
+
+    @ViewBuilder
+    private var meterControls: some View {
+        Picker("Meters", selection: $meterMode) {
+            ForEach(MeterMode.allCases) { Text($0.label).tag($0) }
         }
         .pickerStyle(.segmented)
         .labelsHidden()
         .fixedSize()
+        .help("All channels in order, or grouped by the speakers' height in the loaded layout")
+        Button("Reset Clips") { audioLevels.resetClips() }
+            .help("Clear the latched clip indicators")
     }
 
     private func open(_ path: String) {
@@ -136,22 +216,59 @@ struct ContentView: View {
     }
 }
 
-/// Top-bar driver ON/OFF control. Only this subscribes to DriverController's
-/// 1Hz status updates, so the rest of ContentView doesn't re-render with it.
+/// "128 ch · 48 kHz" as the driver reports it. Observes the 60 Hz model, so it stays a leaf.
+private struct DeviceFormat: View {
+    @ObservedObject var audio: AudioLevelsModel
+
+    var body: some View {
+        let s = audio.status
+        if s.available {
+            Text("\(s.channelCount) ch · \(String(format: "%g", s.sampleRate / 1000)) kHz")
+                .font(Theme.Fonts.number)
+                .foregroundStyle(.secondary)
+                .fixedSize()
+        }
+    }
+}
+
+/// Driver state dot + menu with ON / Update / OFF and the details. Only this subscribes to
+/// DriverController's 1 Hz status updates, so the rest of ContentView doesn't re-render with it.
 /// Enable/disable conditions mirror the former standalone VAIControl app.
-private struct DriverStatusBar: View {
+private struct DriverMenu: View {
     @ObservedObject var driver: DriverController
 
     var body: some View {
         let s = driver.snapshot
-        HStack(spacing: 8) {
-            Circle().fill(s.isOn && !s.outdated ? .green : s.isOff ? .gray : .orange).frame(width: 8, height: 8)
-            if driver.busy { ProgressView().controlSize(.small) }
-            Button(s.outdated ? "Driver Update" : "Driver ON") { driver.turnOn() }
-                .disabled(driver.busy || (s.isOn && !s.outdated) || driver.bundledDriver == nil)
-            Button("Driver OFF") { driver.turnOff() }
-                .disabled(driver.busy || s.isOff)
+        let (title, color) = s.isOn && s.outdated ? ("Driver outdated", Theme.warning)
+            : s.isOn ? ("Driver ON", Theme.levelGreen)
+            : s.isOff ? ("Driver OFF", Theme.inactive)
+            : ("Driver inconsistent", Theme.warning)
+        HStack(spacing: Theme.Space.xs + 2) {
+            if driver.busy {
+                ProgressView().controlSize(.small).scaleEffect(0.7).frame(width: 12, height: 12)
+            } else {
+                Circle().fill(Color(nsColor: color)).frame(width: 8, height: 8)
+            }
+            Menu(title) {
+                Button(s.outdated ? "Update Driver" : "Turn Driver On") { driver.turnOn() }
+                    .disabled(driver.busy || (s.isOn && !s.outdated) || driver.bundledDriver == nil)
+                Button("Turn Driver Off") { driver.turnOff() }
+                    .disabled(driver.busy || s.isOff)
+                Divider()
+                Text(!s.installed ? "Not installed" : s.outdated ? "Installed, differs from the app's driver" : "Installed")
+                Text(s.helperPIDs.isEmpty ? "Helper process not running"
+                     : "Helper process PID " + s.helperPIDs.map(String.init).joined(separator: ", "))
+                Text(s.devicePresent ? "Core Audio device present" : "No Core Audio device")
+                if !driver.message.isEmpty {
+                    Divider()
+                    Text(driver.message)
+                }
+                Divider()
+                Text("On, Update and Off ask for an administrator password")
+                Text("and restart coreaudiod (all audio drops out briefly).")
+            }
+            .fixedSize()
         }
-        .help(driver.message.isEmpty ? (s.outdated ? "インストール済みドライバがアプリ同梱版と異なります" : s.isOn ? "Driver ON" : s.isOff ? "Driver OFF" : "不整合") : driver.message)
+        .help(driver.message.isEmpty ? title : driver.message)
     }
 }

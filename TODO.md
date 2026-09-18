@@ -5,22 +5,22 @@ Planned work, roughly in priority order within each section. Contributions welco
 
 ## UI polish
 
-- [ ] Visual design pass: consistent typography, spacing and color tokens; review light and dark appearance
-- [ ] App icon and a proper About panel
+- [x] Visual design pass: color, type, spacing and radius tokens (`Theme.swift`) in every view; light and dark reviewed
+- [x] App icon (`packaging/icon/make_icon.swift`) and the standard About panel
 - [ ] Meters: selectable layout (grid / horizontal strip), channels-per-row zoom, dB scale labels, value readout on hover
-- [ ] Meters: group channels by SSD speaker layer (e.g. ear level / upper / ceiling / subs)
+- [x] Meters: group channels by SSD speaker layer (Layout mode: height groups, Unassigned with signal)
 - [ ] Monitor: avoid overlapping labels for nearby speakers, add a color/level legend
-- [ ] Monitor: show Delay graphically (Gain already drives the level display; both are in the Ch + Name labels)
+- [x] Monitor: visualize Gain and Delay (Gain drives the level display; both in the Channel + name labels and the speaker table)
 - [ ] Monitor: draw speaker aim once SSD defines a speaker forward axis
 - [ ] Routing panel: sortable columns, search, copy warnings to clipboard
 - [ ] Driver controls: progress feedback while coreaudiod restarts, clearer error messages
 - [ ] Menu bar status item (driver state, quick ON/OFF) so the window can stay closed
 - [ ] First-run onboarding (install driver → select device in DAW → load .sscene)
-- [ ] Localize UI strings (English / Japanese)
+- [x] UI text in English throughout (no Japanese localization planned)
 
 ## Testing and debugging features
 
-- [ ] Built-in test signal generator: pink noise or tone per channel, auto-step through SSD speakers
+- [x] Built-in test signal generator: pink noise or sine, selected channel / step through SSD speakers or all channels / all at once, `--test-signal` CLI
 - [ ] Pass-through to a real audio interface so you can listen while visualizing
 - [ ] Energy/velocity vector (rE / rV) display to check panning and localization
 - [ ] Record and replay meter sessions for offline debugging

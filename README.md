@@ -21,8 +21,10 @@ the sounding speakers lit up, and warnings for routing mistakes.
 
 - **Virtual output device** — up to 128 channels, 44.1 / 48 / 88.2 / 96 kHz, implemented as a Core Audio
   HAL plug-in (AudioServerPlugIn). Channel count and sample rate can be changed from the app.
-- **Meters** — dBFS meters for every channel with RMS, peak, peak hold and latched clip indicators.
-  Channels that carry signal but have no speaker in the loaded layout are marked *unassigned*.
+- **Meters** — dBFS meters for every channel with RMS, peak, peak hold and latched clip indicators,
+  stretched to fill the window. **All channels** shows 1–128 in order; **Layout** groups the loaded
+  layout's channels by speaker height (see [Meters](#meters)). Signal on a channel without a speaker is
+  marked *NO SPK*; channels whose speakers are all muted or disabled are grayed out with *MUTE* / *OFF*.
 - **Monitor** — loads an SSD (`.sscene`) speaker layout and shows it as a plan view, front/side
   elevations or a free 3D view. Speakers light up by level (optionally input level + the layout's Gain);
   optional lines from the listener show what is sounding right now. Screens, LED walls, projectors, cameras,
@@ -30,18 +32,19 @@ the sounding speakers lit up, and warnings for routing mistakes.
   The file reloads automatically when you save it.
 - **Routing checks** — signal on an unassigned channel, speakers beyond the device's channel count,
   signal on muted or disabled speakers, channels shared by several speakers, parser warnings.
+- **Test signal** — pink noise or a sine into the virtual device, on the selected channel, stepping through
+  the layout's speakers or all channels, or on all channels at once, so the whole chain can be checked
+  without a DAW (see [Test signal](#test-signal)).
 - **Host-decided values** — IO buffer size, running state, client count and the sample rate the DAW asked
   for, so you can see what the host actually negotiated.
-- **Driver ON / OFF / Update** from the app, with verification that the driver process is really gone
-  when turned off.
+- **Driver ON / OFF / Update** from the driver menu at the top right, with verification that the driver
+  process is really gone when turned off.
 
 | Meters | Settings |
 |---|---|
 | ![Meters tab](docs/images/meters.png) | ![Settings tab](docs/images/settings.png) |
 
 ![Monitor tab, perspective view](docs/images/monitor-perspective.png)
-
-The interface labels are currently Japanese; localization is on the [roadmap](TODO.md).
 
 ## Requirements
 
@@ -73,11 +76,12 @@ sudo ./uninstall.sh
 ```
 
 It removes the app and the driver, forgets the package receipts and restarts `coreaudiod`.
-To only unload the driver and keep the app, use **Driver OFF** in the app.
+To only unload the driver and keep the app, choose **Turn Driver Off** in the app's driver menu.
 
 ## Quick start
 
-1. Open **Virtual Audio Interface**. The dot at the top right is green when the driver is loaded.
+1. Open **Virtual Audio Interface**. The dot at the top right is green when the driver is loaded; the menu
+   next to it turns the driver on, updates or turns it off and shows its details.
 2. In your DAW, select **Virtual Audio Interface (128ch)** as the output device.
    In Ableton Live: *Settings → Audio → Audio Output Device*, then enable the channels you need in
    *Output Config*.
@@ -86,10 +90,53 @@ To only unload the driver and keep the app, use **Driver OFF** in the app.
    [`Examples/venue-demo.sscene`](Examples/venue-demo.sscene) for speakers with a screen, LED walls,
    a projector and cameras.
 4. Play. The **Monitor** tab lights up the speakers that receive signal; **Meters** shows every channel.
+   No DAW at hand? Start the **Test signal** (second row, right).
+
+The top row shows the file and when it was read, the device format (e.g. *128 ch · 48 kHz*) and the driver.
+The second row holds the current tab's controls (Monitor: camera presets and the **View** menu with sounding
+lines, scene objects, Apply SSD gain and labels; Meters: All channels / Layout and Reset Clips) and the test
+signal. The 3D view and the meters stay dark in light mode too.
 
 The app reopens the last layout on the next launch. Saving the file in an editor reloads it automatically
 and keeps the view and selection; if the saved file does not parse (e.g. half-written), the last valid
 version stays on screen under an error banner. **Reload** (⌘R) re-reads the file and re-frames the view.
+
+## Meters
+
+**All channels** shows every channel of the device in order. **Layout** needs a loaded `.sscene`: it groups
+the layout's channels by speaker height, highest first (a new group starts where adjacent speakers are more
+than 0.5 m apart in Z), each headed like *z ≈ 2.7 m · 6 speakers*. Channels above −60 dBFS that no speaker
+uses follow as **Unassigned with signal**. The groups flow across the window and the meters stretch to its
+height. Click a meter to select that channel everywhere.
+
+| Mark | Meaning |
+|---|---|
+| red frame, *NO SPK* | signal on a channel without a speaker |
+| gray bar, *MUTE* / *OFF* | every speaker on the channel is muted / disabled; orange frame while signal still arrives |
+| red dot at the top | the channel clipped (latched until **Reset Clips**) |
+
+## Test signal
+
+The test signal plays into the virtual device from the app itself (mixed with anything your DAW sends), so
+the Monitor and Meters tabs, the routing checks and your speaker layout can be checked without a DAW. It
+needs the driver ON.
+
+- **Signal**: pink noise, or a sine at 63 Hz – 8 kHz. **Level**: −60 to 0 dBFS (sine: peak, pink noise: RMS).
+- **Target**:
+  - **Selected channel** — the channel selected in the 3D view, the speaker table or the meters.
+  - **Step through SSD speakers** — each channel of the layout's enabled, unmuted speakers in turn.
+  - **Step through all channels** — channels 1 … N of the device in turn.
+  - **All channels at once**.
+- **Dwell** (while stepping): 0.25–5 s per channel. Stepping moves the selection along, so the 3D view,
+  the table and the meters follow the channel that is playing.
+
+It stops when you stop it, close the window or quit. From Terminal, without a window:
+
+```bash
+dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal <channel> <seconds> [pink|sine] [dBFS]
+# e.g. 2 s of pink noise on channel 17 at -20 dBFS (sine is 1 kHz)
+dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal 17 2 pink -20
+```
 
 ## Speaker layouts (SSD / .sscene)
 
@@ -123,13 +170,14 @@ AngleUnit	degree
   Several speakers may share a channel.
 - `[REVIEW_VOLUME]` (Width, Depth, Height) is shown as information only.
 - SSD does not define a speaker's forward axis, so speaker aim is not drawn.
-- **Apply SSD gain** (on by default) lights speakers by input level + `Gain`, the level expected at the
-  speaker; the speaker table shows both, and the level bar sits in the column that drives the 3D view.
-  Muted speakers never light up (red cross). **Ch + Name** labels add non-zero `Gain` / `Delay`.
+- **Apply SSD gain** (View menu, on by default) lights speakers by input level + `Gain`, the level expected at
+  the speaker; the speaker table shows both, and the level bar sits in the column that drives the 3D view.
+  Muted and disabled speakers never light up: they are ghosted (muted ones with a cross) and turn orange while
+  their channel still carries signal. **Channel + name** labels (View menu) add non-zero `Gain` / `Delay`.
 
 ### Scene objects
 
-With **Scene objects** on (the default), every other OBJECT is drawn in muted colors behind the speakers:
+With **View → Scene objects** on (the default), every other OBJECT is drawn in muted colors behind the speakers:
 
 | Section / type | Drawn as |
 |---|---|
@@ -158,7 +206,7 @@ and cycles, and reports errors with line numbers.
 
 | Warning | When |
 |---|---|
-| Unassigned (red) | A channel above −60 dBFS has no speaker |
+| Unassigned (red) | A channel above −60 dBFS has no speaker in the loaded layout |
 | Out of range (red) | A speaker's channel exceeds the device's active channel count |
 | Muted / disabled (orange) | A muted or disabled speaker's channel carries signal |
 | Parser (orange) | Unknown sections and other parser warnings |
@@ -210,12 +258,16 @@ The version comes from [`VERSION`](VERSION); the build number is the commit coun
 ### Tests and tools
 
 ```bash
-make -C Tools check            # shared memory + meter ballistics, SSD parser, objects and transforms, file watcher
+make -C Tools check            # shared memory + meter ballistics, SSD parser, objects and transforms,
+                               # test signal DSP, file watcher
 make -C Tools harness          # drives the plug-in like coreaudiod under ASan/UBSan
 ```
 
 - `dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --status` prints the driver state.
-- `... --docshot <dir> [scene.sscene]` renders every tab to PNG (used for the screenshots above).
+- `... --docshot <dir> [scene.sscene] [--appearance light|dark] [--size WxH]` renders every tab to PNG
+  (used for the screenshots above; the window is 1400×900 pt unless `--size` says otherwise).
+- `... --test-signal <channel> <seconds> [pink|sine] [dBFS]` plays the [test signal](#test-signal) without a window.
+- `swift packaging/icon/make_icon.swift` redraws the app icon (`packaging/icon/AppIcon.icns`).
 - `Tools/fake_meter [sweep|sine|clip]` writes synthetic levels without a DAW. It uses the same shared memory
   as the driver, so run it only while the driver is OFF.
 
@@ -224,16 +276,16 @@ make -C Tools harness          # drives the plug-in like coreaudiod under ASan/U
 ```text
 HALPlugin/        Core Audio HAL plug-in (C++), Makefile, dev install script
 Shared/           Shared memory layout used by the plug-in and the app
-VisualizerApp/    Swift package: SwiftUI app, AudioBridge (shared memory), SSDBridge (SSD parser)
+VisualizerApp/    Swift package: SwiftUI app, AudioBridge (shared memory), SSDBridge (SSD parser),
+                  TestSignalDSP (test signal generator)
 Tools/            Self-checks, HAL harness, fake meter source
 Examples/         Sample .sscene layouts
-packaging/        Installer (pkg) build, uninstall script
+packaging/        Installer (pkg) build, uninstall script, app icon
 ```
 
 ## Roadmap
 
-See [TODO.md](TODO.md) — UI polish, a built-in test signal generator, pass-through monitoring,
-notarization and more.
+See [TODO.md](TODO.md) — UI polish, pass-through monitoring, notarization and more.
 
 ## See also
 

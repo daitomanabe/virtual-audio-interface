@@ -76,6 +76,7 @@ APP="dist/VirtualAudioInterface.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/VisualizerApp"
 cp -R "$DRIVER_BUNDLE" "$APP/Contents/Resources/"
+cp packaging/icon/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"   # regenerate: swift packaging/icon/make_icon.swift
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -85,6 +86,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleDisplayName</key><string>Virtual Audio Interface</string>
     <key>CFBundleIdentifier</key><string>com.daitomanabe.virtualaudiointerface.app</string>
     <key>CFBundleExecutable</key><string>VisualizerApp</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
+    <key>NSHumanReadableCopyright</key><string>© 2026 Daito Manabe</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
     <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
     <key>LSMinimumSystemVersion</key><string>13.0</string>
