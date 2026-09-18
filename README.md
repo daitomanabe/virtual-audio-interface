@@ -58,7 +58,7 @@ the sounding speakers lit up, and warnings for routing mistakes.
    **System Settings → Privacy & Security** and click **Open Anyway** next to the message about the package.
    Alternatively, remove the quarantine flag in Terminal:
    ```bash
-   xattr -d com.apple.quarantine ~/Downloads/VirtualAudioInterface-0.1.0.pkg
+   xattr -d com.apple.quarantine ~/Downloads/VirtualAudioInterface-0.2.0.pkg
    ```
 3. Run the installer. It installs
    - `/Applications/VirtualAudioInterface.app`
