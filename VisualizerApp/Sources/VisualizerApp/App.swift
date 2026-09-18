@@ -79,6 +79,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let main = NSMenu()
         main.addItem(menu("Virtual Audio Interface", [
+            item("About Virtual Audio Interface", #selector(NSApplication.orderFrontStandardAboutPanel(_:))),
+            .separator(),
             item("Hide Virtual Audio Interface", #selector(NSApplication.hide(_:)), "h"),
             .separator(),
             item("Quit Virtual Audio Interface", #selector(NSApplication.terminate(_:)), "q"),
