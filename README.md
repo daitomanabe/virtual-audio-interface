@@ -87,8 +87,9 @@ The app reopens the last layout on the next launch; **Reload** (⌘R) picks up e
 
 ## Speaker layouts (SSD / .sscene)
 
-Layouts use SSD (Spatial Scene Definition) v0.1, a tab-separated text format. The app reads the sections
-below; other SSD sections (screens, projectors, cameras, …) are accepted and ignored.
+Layouts use SSD (Spatial Scene Definition) v0.1, a tab-separated text format documented in
+[daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format). The app reads the sections below;
+other SSD sections (screens, projectors, cameras, …) are accepted and ignored.
 
 ```text
 [SCENE]
@@ -117,8 +118,11 @@ AngleUnit	degree
 - `[REVIEW_VOLUME]` (Width, Depth, Height) is shown as information only.
 - SSD does not define a speaker's forward axis, so speaker aim is not drawn.
 
-The parser ([`ssd_reader.h`](VisualizerApp/Sources/SSDBridge/ssd_reader.h)) validates the header, numbers,
-parent references and cycles, and reports errors with line numbers.
+The parser ([`ssd_reader.h`](VisualizerApp/Sources/SSDBridge/ssd_reader.h)) is an independent
+implementation of the format, written from the spec and cross-checked against the reference reader in
+[daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format): same world transforms, enabled state,
+speaker values and warnings on every example scene. It validates the header, numbers, parent references
+and cycles, and reports errors with line numbers.
 
 ### Routing warnings
 
@@ -200,6 +204,11 @@ packaging/        Installer (pkg) build, uninstall script
 
 See [TODO.md](TODO.md) — UI polish, a built-in test signal generator, pass-through monitoring,
 notarization and more.
+
+## See also
+
+- [daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format) — the `.sscene` format: full
+  specification, reference reader and more example scenes
 
 ## License
 

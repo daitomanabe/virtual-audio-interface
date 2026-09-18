@@ -87,7 +87,8 @@ sudo ./uninstall.sh
 
 ## スピーカー配置(SSD / .sscene)
 
-配置は SSD(Spatial Scene Definition)v0.1 というタブ区切りテキスト形式で書きます。アプリが読むのは下の
+配置は SSD(Spatial Scene Definition)v0.1 というタブ区切りテキスト形式で書きます。形式の仕様は
+[daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format) にあります。アプリが読むのは下の
 セクションで、それ以外の SSD のセクション(スクリーン、プロジェクター、カメラなど)は受け付けて無視します。
 
 ```text
@@ -117,7 +118,9 @@ AngleUnit	degree
 - `[REVIEW_VOLUME]`(Width, Depth, Height)は情報として表示するだけです。
 - SSD にはスピーカーの正面方向の定義がないため、スピーカーの向きは描いていません。
 
-パーサー([`ssd_reader.h`](VisualizerApp/Sources/SSDBridge/ssd_reader.h))は、ヘッダー、数値、親の参照、
+パーサー([`ssd_reader.h`](VisualizerApp/Sources/SSDBridge/ssd_reader.h))は仕様から独自に実装したもので、
+[daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format) の参照実装と突き合わせてあります
+(全サンプルシーンで、ワールド変換・有効状態・SPEAKER の値・警告が一致)。ヘッダー、数値、親の参照、
 循環参照を検証し、エラーは行番号付きで表示します。
 
 ### ルーティング警告
@@ -209,6 +212,11 @@ packaging/        インストーラー(pkg)のビルド、アンインストー
 - **ドライバ**: チャンネル数に合わせたデバイス名、HAL コントロールとしてのミュート / トリム、
   ループバック入力、共有メモリの設定領域の保護、パスワード入力なしの ON/OFF(特権ヘルパー)
 - **配布**: Developer ID 署名と公証、GitHub Actions、Homebrew cask
+
+## 関連
+
+- [daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format) — `.sscene` 形式の仕様、参照実装、
+  サンプルシーン
 
 ## ライセンス
 
