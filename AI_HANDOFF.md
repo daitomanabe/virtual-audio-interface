@@ -7,7 +7,7 @@
 ## Status
 
 - Overall: `IN_PROGRESS` — v0.2.0 is released and working on the author's machine; the roadmap in `TODO.md` is open.
-- Evidence freshness: `current` as of the capture time (commit `9435351`, tag `v0.2.0`).
+- Evidence freshness: `current` as of the capture time; the driver/app evidence below was taken at commit `9435351` (tag `v0.2.0`) and the commits after it are docs, `Examples/FIL-v1.sscene` and screenshots only.
 - Safe continuation: `yes` — the checkout is clean and `main` equals `origin/main` (check `git status -sb`). Anything that restarts `coreaudiod` or publishes needs the user's approval (see Safety Boundaries).
 
 ## Read First

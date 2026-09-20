@@ -6,7 +6,7 @@ speaker of your layout (`.sscene`) it would come out of.
 
 [日本語 README](README.ja.md)
 
-![Monitor tab: speaker layout from a .sscene file with live levels and routing warnings](docs/images/monitor-top.png)
+![Monitor tab: speaker layout from a .sscene file with live levels and routing warnings](docs/images/monitor-perspective.png)
 
 ## Why
 
@@ -44,7 +44,7 @@ the sounding speakers lit up, and warnings for routing mistakes.
 |---|---|
 | ![Meters tab](docs/images/meters.png) | ![Settings tab](docs/images/settings.png) |
 
-![Monitor tab, perspective view](docs/images/monitor-perspective.png)
+![Monitor tab, plan view with Channel + name labels](docs/images/monitor-top.png)
 
 ## Requirements
 

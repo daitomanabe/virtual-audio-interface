@@ -6,7 +6,7 @@ DAW からは普通の出力デバイスとして見え、各チャンネルに�
 
 [English README](README.md)
 
-![Monitor タブ: .sscene のスピーカー配置、ライブのレベル、ルーティング警告](docs/images/monitor-top.png)
+![Monitor タブ: .sscene のスピーカー配置、ライブのレベル、ルーティング警告](docs/images/monitor-perspective.png)
 
 ## なぜ作ったか
 
@@ -47,7 +47,7 @@ Ableton Live などからは本物のオーディオインターフェースと�
 |---|---|
 | ![Meters タブ](docs/images/meters.png) | ![Settings タブ](docs/images/settings.png) |
 
-![Monitor タブ(3D 表示)](docs/images/monitor-perspective.png)
+![Monitor タブ(平面図、Channel + 名前のラベル)](docs/images/monitor-top.png)
 
 ## 動作環境
 

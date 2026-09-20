@@ -1,6 +1,10 @@
 # A real room: 12 hung speakers + 4 extra speakers, 16 moving lights, one projector and its wall image.
 # Working study exported from a venue survey; positions are estimates (see [EVIDENCE] / [UNRESOLVED]).
 # The [SPEAKER] rows were added for this example and are an assumption, not a confirmed patch.
+# Light names were translated from Japanese; house left/right is as seen from the audience (-X / +X here).
+# PJ 01 keeps its surveyed pose. Drawn along this app's assumed optical axis (local -Z) it faces world -X,
+# not the wall image on +X: the source marks the horizontal pose provisional and SSD v0.1 does not define
+# the optical axis, so the numbers are left as surveyed rather than turned to match the assumption.
 
 [SCENE]
 Version	0.1
@@ -30,22 +34,22 @@ speaker-extra-front-left	speaker	Extra front-left	none	-1.9	3.19	1.35	0	0	0	1
 speaker-extra-front-right	speaker	Extra front-right	none	1.5	3.19	1.35	0	0	0	1
 speaker-extra-rear-left	speaker	Extra rear-left	none	-1.9	-3.06	1.35	0	0	0	1
 speaker-extra-rear-right	speaker	Extra rear-right	none	1.5	-3.06	1.35	0	0	0	1
-light-01	light	Light 01 / 正面下手	none	-0.95	3.84	2.55	0	0	0	1
+light-01	light	Light 01 / front, house left	none	-0.95	3.84	2.55	0	0	0	1
 light-02	light	Light 02	none	-0.45	3.84	2.55	0	0	0	1
 light-03	light	Light 03	none	0.5	3.84	2.55	0	0	0	1
-light-04	light	Light 04 / 正面上手	none	1	3.84	2.55	0	0	0	1
-light-05	light	Light 05 / 前中下手	none	-0.95	1.74	2.41	0	0	0	1
+light-04	light	Light 04 / front, house right	none	1	3.84	2.55	0	0	0	1
+light-05	light	Light 05 / front-mid, house left	none	-0.95	1.74	2.41	0	0	0	1
 light-06	light	Light 06	none	-0.45	1.74	2.41	0	0	0	1
 light-07	light	Light 07	none	0.5	1.74	2.41	0	0	0	1
-light-08	light	Light 08 / 前中上手	none	1	1.74	2.41	0	0	0	1
-light-09	light	Light 09 / 後中下手	none	-0.95	-0.86	2.41	0	0	0	1
+light-08	light	Light 08 / front-mid, house right	none	1	1.74	2.41	0	0	0	1
+light-09	light	Light 09 / rear-mid, house left	none	-0.95	-0.86	2.41	0	0	0	1
 light-10	light	Light 10	none	-0.45	-0.86	2.41	0	0	0	1
 light-11	light	Light 11	none	0.5	-0.86	2.41	0	0	0	1
-light-12	light	Light 12 / 後中上手	none	1	-0.86	2.41	0	0	0	1
-light-13	light	Light 13 / 後方下手	none	-0.95	-3.66	2.55	0	0	0	1
+light-12	light	Light 12 / rear-mid, house right	none	1	-0.86	2.41	0	0	0	1
+light-13	light	Light 13 / rear, house left	none	-0.95	-3.66	2.55	0	0	0	1
 light-14	light	Light 14	none	-0.45	-3.66	2.55	0	0	0	1
 light-15	light	Light 15	none	0.5	-3.66	2.55	0	0	0	1
-light-16	light	Light 16 / 後方上手	none	1	-3.66	2.55	0	0	0	1
+light-16	light	Light 16 / rear, house right	none	1	-3.66	2.55	0	0	0	1
 projector-01	projector	PJ 01	none	-0.95	0	2.7	0	0	90	1
 projection-wall-01	surface	PJ 01 / wall image	none	2.6	0.49	1.325	-90	0	-90	1
 
@@ -158,5 +162,5 @@ speaker-x-photo	Photo and user correction	PHOTO_ESTIMATE: left=-1.4m, centre=0m,
 lighting-unit	Source coordinate units	mm conversion adopted as the lighting reference for this estimate
 extra-speakers	Additional speaker confidence	DERIVED from user-specified offsets; inherits the hanging speakers photo-estimated X and lighting-reference Y/Z
 speaker-patch	Audio routing	NYS slot IDs retained; physical channel numbering is unconfirmed; SPEAKER rows assume slot N -> channel N+1, extras -> 13-16
-light-patch	Lighting patch	Universe=1; MagicDot-R St 17ch matches sheet RGB mapping; device mode/aim and network reachability not verified; see lighting.json
+light-patch	Lighting patch	Universe=1; MagicDot-R St 17ch matches sheet RGB mapping; device mode/aim and network reachability not verified
 projector-01	Projector installation and optics	Installation X=-0.95, Y=0 explicitly specified; Z approximately 2.7m. Projects onto projection-wall-01 on +X wall. Horizontal pose remains provisional: physical lens axis, lens shift, model and optics OPEN. User reports PT-RZ970 WUXGA, ceiling mode; lens model unknown.

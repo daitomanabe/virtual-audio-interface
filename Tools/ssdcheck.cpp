@@ -229,9 +229,12 @@ int main() {
     assert(n == 16 && warnings[0] == '\0');
     assert(byName(n, "Front C").channel == 1 && byName(n, "Extra rear-right").channel == 16);
     n = loadObjects("../Examples/FIL-v1.sscene");
-    assert(n == 35 && warnings[0] == '\0');
+    assert(n == 35 && warnings[0] == '\0');  // 1 room + 16 speakers + 16 lights + projector + wall image
     const SSDBObjectInfo &wall = objects[objectIndex(n, "projection-wall-01")];
     assert(wall.hasRect && near(wall.width, 3.9) && is(apply(wall.world, {0, 0, 1}, false), -1, 0, 0)); // faces -X
+    // The surveyed projector pose does not aim at that wall: along this app's assumed optical axis
+    // (local -Z) it faces world -X. Kept as surveyed, see the file's header comment.
+    assert(is(apply(objects[objectIndex(n, "projector-01")].world, {0, 0, -1}, false), -1, 0, 0));
 
     assert(ssdb_load_scene("../Examples/missing.sscene", &info, sp, SSDB_MAX_SPEAKERS, warnings,
                            sizeof warnings, err, sizeof err) == -1 && err[0]);

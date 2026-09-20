@@ -19,6 +19,8 @@ Headless app modes (no window in front): `VisualizerApp --status`, `--docshot <d
 README screenshots (`docs/images/`): run the bundled app (a bare `swift build` binary shows "Version ? (?)") with
 `--docshot <dir> "$PWD/Examples/FIL-v1.sscene" --appearance dark --size 1400x848`, then `sips --resampleWidth 1600`.
 `monitor-top`, `monitor-perspective` and `settings` keep their names; `meters.png` is the `meters-layout` shot.
+The README's first image is `monitor-perspective`: the Top view draws every object's name, which overlaps in a
+dense layout (TODO) and should not be the first thing a visitor sees.
 
 If the x86_64 Swift build fails with "not registered", delete `VisualizerApp/.build/x86_64-apple-macosx` (build_app.sh retries once).
 
