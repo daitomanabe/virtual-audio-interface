@@ -347,8 +347,17 @@ struct SpeakerSceneView: NSViewRepresentable {
 
         func apply(_ mode: LabelMode) {
             labelMode = mode
-            for n in nodes { setText(n.label, mode == .number ? "\(n.speaker.channel)" : n.speaker.longLabel) }
-            for label in objectLabels { label.isHidden = mode == .number }
+            // A dense layout cannot fit names beside every speaker. The routing table still exposes
+            // the full names, while the scene stays spatially legible with channel labels.
+            let compactSpeakers = nodes.count > 16
+            for n in nodes {
+                setText(n.label, mode == .number || compactSpeakers ? "\(n.speaker.channel)" : n.speaker.longLabel)
+            }
+            // Dense review scenes remain useful with their geometry visible, but their object names
+            // become unreadable and collide in orthographic views. Keep labels for small scenes and
+            // suppress only the secondary object labels once the scene is clearly dense.
+            let denseObjects = objectLabels.count > 24
+            for label in objectLabels { label.isHidden = mode == .number || denseObjects || compactSpeakers }
         }
 
         func select(_ channel: Int?) {
@@ -473,11 +482,14 @@ extension Speaker {
     var silent: Bool { mute || !active }
 
     /// Ch + Name label: "9 U1" and, when non-zero, Gain / Delay on a second line ("−1.5 dB · 1.2 ms").
+    /// Parenthesized source IDs are useful in the file but too noisy for a spatial label.
     var longLabel: String {
         var extras: [String] = []
         if gainDb != 0 { extras.append(String(format: "%+.1f dB", gainDb).replacingOccurrences(of: "-", with: "−")) }
         if delayMs != 0 { extras.append(String(format: "%.1f ms", delayMs)) }
-        let base = name.isEmpty ? "\(channel)" : "\(channel) \(name)"
+        let displayName = name.split { $0 == "(" || $0 == "/" || $0.isWhitespace }
+            .first.map(String.init) ?? name
+        let base = displayName.isEmpty ? "\(channel)" : "\(channel) \(displayName)"
         return extras.isEmpty ? base : base + "\n" + extras.joined(separator: " · ") // two short lines overlap less
     }
 }
