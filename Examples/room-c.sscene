@@ -1,0 +1,368 @@
+# Spatial Scene Definition / source-derived review snapshot. 24 hung units (speaker + camera + light
+# in one box) over a 28 x 25 m room, plus four monitor faces: the densest example here, and the one
+# that carries orientation. Every unit aims straight down, written as Pitch 180 about local +Z --
+# the device axis this app draws (README, "Scene objects"). [EVIDENCE] OrientationStatus says how
+# far each direction is to be trusted.
+# The [SPEAKER] rows were added for this example from the working rule stated in [UNRESOLVED]
+# c-audio-channels (logical ch n = SPK_(100+n)); the patch itself is not confirmed.
+# Unknown placement is kept in INVENTORY, never silently placed at the origin.
+# EVIDENCE is essential when using these room studies (profile SSD_REVIEW_0.1).
+
+[SCENE]
+Version	0.1
+Name	Relational Time / Room C
+Unit	meter
+CoordinateSystem	SSD_RH_ZUP
+AngleUnit	degree
+Profile	SSD_REVIEW_0.1
+Status	WORKING STUDY / NOT CONSTRUCTION
+Summary	24 hung units (BWV 4x8 speaker + reCamera + LED wash in one 1.8 x 0.3 m box, underside FL+7.6 m, 6-4-4-4-6, ids 101-124 from the NW corner) + four tower monitor faces
+
+[OBJECT]
+# ID	Type	Name	Parent	X	Y	Z	Yaw	Pitch	Roll	Enabled
+c_SPK_101	speaker	SPK_101 / X1Y1 (room-c-spk-101)	none	-14.14	11.916	7.75175	0	180	0	1
+c_SPK_102	speaker	SPK_102 / X2Y1 (room-c-spk-102)	none	-8.14	11.916	7.75175	0	180	0	1
+c_SPK_103	speaker	SPK_103 / X3Y1 (room-c-spk-103)	none	-2.22	11.916	7.75175	0	180	0	1
+c_SPK_104	speaker	SPK_104 / X4Y1 (room-c-spk-104)	none	2.22	11.916	7.75175	0	180	0	1
+c_SPK_105	speaker	SPK_105 / X5Y1 (room-c-spk-105)	none	8.14	11.916	7.75175	0	180	0	1
+c_SPK_106	speaker	SPK_106 / X6Y1 (room-c-spk-106)	none	14.14	11.916	7.75175	0	180	0	1
+c_SPK_107	speaker	SPK_107 / X2Y2 (room-c-spk-107)	none	-8.14	5.996	7.75175	0	180	0	1
+c_SPK_108	speaker	SPK_108 / X3Y2 (room-c-spk-108)	none	-2.22	5.996	7.75175	0	180	0	1
+c_SPK_109	speaker	SPK_109 / X4Y2 (room-c-spk-109)	none	2.22	5.996	7.75175	0	180	0	1
+c_SPK_110	speaker	SPK_110 / X5Y2 (room-c-spk-110)	none	8.14	5.996	7.75175	0	180	0	1
+c_SPK_111	speaker	SPK_111 / X2Y3 (room-c-spk-111)	none	-8.14	-0.004	7.75175	0	180	0	1
+c_SPK_112	speaker	SPK_112 / X3Y3 (room-c-spk-112)	none	-2.22	-0.004	7.75175	0	180	0	1
+c_SPK_113	speaker	SPK_113 / X4Y3 (room-c-spk-113)	none	2.22	-0.004	7.75175	0	180	0	1
+c_SPK_114	speaker	SPK_114 / X5Y3 (room-c-spk-114)	none	8.14	-0.004	7.75175	0	180	0	1
+c_SPK_115	speaker	SPK_115 / X2Y4 (room-c-spk-115)	none	-8.14	-5.997	7.75175	0	180	0	1
+c_SPK_116	speaker	SPK_116 / X3Y4 (room-c-spk-116)	none	-2.22	-5.997	7.75175	0	180	0	1
+c_SPK_117	speaker	SPK_117 / X4Y4 (room-c-spk-117)	none	2.22	-5.997	7.75175	0	180	0	1
+c_SPK_118	speaker	SPK_118 / X5Y4 (room-c-spk-118)	none	8.14	-5.997	7.75175	0	180	0	1
+c_SPK_119	speaker	SPK_119 / X1Y5 (room-c-spk-119)	none	-14.14	-11.924	7.75175	0	180	0	1
+c_SPK_120	speaker	SPK_120 / X2Y5 (room-c-spk-120)	none	-8.14	-11.924	7.75175	0	180	0	1
+c_SPK_121	speaker	SPK_121 / X3Y5 (room-c-spk-121)	none	-2.22	-11.924	7.75175	0	180	0	1
+c_SPK_122	speaker	SPK_122 / X4Y5 (room-c-spk-122)	none	2.22	-11.924	7.75175	0	180	0	1
+c_SPK_123	speaker	SPK_123 / X5Y5 (room-c-spk-123)	none	8.14	-11.924	7.75175	0	180	0	1
+c_SPK_124	speaker	SPK_124 / X6Y5 (room-c-spk-124)	none	14.14	-11.924	7.75175	0	180	0	1
+c_CAM_101	camera	CAM_101 / X1Y1 (room-c-cam-101)	none	-14.14	11.226	7.6	90	180	0	1
+c_CAM_102	camera	CAM_102 / X2Y1 (room-c-cam-102)	none	-8.14	11.226	7.6	90	180	0	1
+c_CAM_103	camera	CAM_103 / X3Y1 (room-c-cam-103)	none	-2.22	11.226	7.6	90	180	0	1
+c_CAM_104	camera	CAM_104 / X4Y1 (room-c-cam-104)	none	2.22	11.226	7.6	90	180	0	1
+c_CAM_105	camera	CAM_105 / X5Y1 (room-c-cam-105)	none	8.14	11.226	7.6	90	180	0	1
+c_CAM_106	camera	CAM_106 / X6Y1 (room-c-cam-106)	none	14.14	11.226	7.6	90	180	0	1
+c_CAM_107	camera	CAM_107 / X2Y2 (room-c-cam-107)	none	-8.14	5.306	7.6	90	180	0	1
+c_CAM_108	camera	CAM_108 / X3Y2 (room-c-cam-108)	none	-2.22	5.306	7.6	90	180	0	1
+c_CAM_109	camera	CAM_109 / X4Y2 (room-c-cam-109)	none	2.22	5.306	7.6	90	180	0	1
+c_CAM_110	camera	CAM_110 / X5Y2 (room-c-cam-110)	none	8.14	5.306	7.6	90	180	0	1
+c_CAM_111	camera	CAM_111 / X2Y3 (room-c-cam-111)	none	-8.14	-0.694	7.6	90	180	0	1
+c_CAM_112	camera	CAM_112 / X3Y3 (room-c-cam-112)	none	-2.22	-0.694	7.6	90	180	0	1
+c_CAM_113	camera	CAM_113 / X4Y3 (room-c-cam-113)	none	2.22	-0.694	7.6	90	180	0	1
+c_CAM_114	camera	CAM_114 / X5Y3 (room-c-cam-114)	none	8.14	-0.694	7.6	90	180	0	1
+c_CAM_115	camera	CAM_115 / X2Y4 (room-c-cam-115)	none	-8.14	-6.687	7.6	90	180	0	1
+c_CAM_116	camera	CAM_116 / X3Y4 (room-c-cam-116)	none	-2.22	-6.687	7.6	90	180	0	1
+c_CAM_117	camera	CAM_117 / X4Y4 (room-c-cam-117)	none	2.22	-6.687	7.6	90	180	0	1
+c_CAM_118	camera	CAM_118 / X5Y4 (room-c-cam-118)	none	8.14	-6.687	7.6	90	180	0	1
+c_CAM_119	camera	CAM_119 / X1Y5 (room-c-cam-119)	none	-14.14	-12.614	7.6	90	180	0	1
+c_CAM_120	camera	CAM_120 / X2Y5 (room-c-cam-120)	none	-8.14	-12.614	7.6	90	180	0	1
+c_CAM_121	camera	CAM_121 / X3Y5 (room-c-cam-121)	none	-2.22	-12.614	7.6	90	180	0	1
+c_CAM_122	camera	CAM_122 / X4Y5 (room-c-cam-122)	none	2.22	-12.614	7.6	90	180	0	1
+c_CAM_123	camera	CAM_123 / X5Y5 (room-c-cam-123)	none	8.14	-12.614	7.6	90	180	0	1
+c_CAM_124	camera	CAM_124 / X6Y5 (room-c-cam-124)	none	14.14	-12.614	7.6	90	180	0	1
+c_LIGHT_101	light	LIGHT_101 / X1Y1 (room-c-light-101)	none	-14.14	12.606	7.6	0	180	0	1
+c_LIGHT_102	light	LIGHT_102 / X2Y1 (room-c-light-102)	none	-8.14	12.606	7.6	0	180	0	1
+c_LIGHT_103	light	LIGHT_103 / X3Y1 (room-c-light-103)	none	-2.22	12.606	7.6	0	180	0	1
+c_LIGHT_104	light	LIGHT_104 / X4Y1 (room-c-light-104)	none	2.22	12.606	7.6	0	180	0	1
+c_LIGHT_105	light	LIGHT_105 / X5Y1 (room-c-light-105)	none	8.14	12.606	7.6	0	180	0	1
+c_LIGHT_106	light	LIGHT_106 / X6Y1 (room-c-light-106)	none	14.14	12.606	7.6	0	180	0	1
+c_LIGHT_107	light	LIGHT_107 / X2Y2 (room-c-light-107)	none	-8.14	6.686	7.6	0	180	0	1
+c_LIGHT_108	light	LIGHT_108 / X3Y2 (room-c-light-108)	none	-2.22	6.686	7.6	0	180	0	1
+c_LIGHT_109	light	LIGHT_109 / X4Y2 (room-c-light-109)	none	2.22	6.686	7.6	0	180	0	1
+c_LIGHT_110	light	LIGHT_110 / X5Y2 (room-c-light-110)	none	8.14	6.686	7.6	0	180	0	1
+c_LIGHT_111	light	LIGHT_111 / X2Y3 (room-c-light-111)	none	-8.14	0.686	7.6	0	180	0	1
+c_LIGHT_112	light	LIGHT_112 / X3Y3 (room-c-light-112)	none	-2.22	0.686	7.6	0	180	0	1
+c_LIGHT_113	light	LIGHT_113 / X4Y3 (room-c-light-113)	none	2.22	0.686	7.6	0	180	0	1
+c_LIGHT_114	light	LIGHT_114 / X5Y3 (room-c-light-114)	none	8.14	0.686	7.6	0	180	0	1
+c_LIGHT_115	light	LIGHT_115 / X2Y4 (room-c-light-115)	none	-8.14	-5.307	7.6	0	180	0	1
+c_LIGHT_116	light	LIGHT_116 / X3Y4 (room-c-light-116)	none	-2.22	-5.307	7.6	0	180	0	1
+c_LIGHT_117	light	LIGHT_117 / X4Y4 (room-c-light-117)	none	2.22	-5.307	7.6	0	180	0	1
+c_LIGHT_118	light	LIGHT_118 / X5Y4 (room-c-light-118)	none	8.14	-5.307	7.6	0	180	0	1
+c_LIGHT_119	light	LIGHT_119 / X1Y5 (room-c-light-119)	none	-14.14	-11.234	7.6	0	180	0	1
+c_LIGHT_120	light	LIGHT_120 / X2Y5 (room-c-light-120)	none	-8.14	-11.234	7.6	0	180	0	1
+c_LIGHT_121	light	LIGHT_121 / X3Y5 (room-c-light-121)	none	-2.22	-11.234	7.6	0	180	0	1
+c_LIGHT_122	light	LIGHT_122 / X4Y5 (room-c-light-122)	none	2.22	-11.234	7.6	0	180	0	1
+c_LIGHT_123	light	LIGHT_123 / X5Y5 (room-c-light-123)	none	8.14	-11.234	7.6	0	180	0	1
+c_LIGHT_124	light	LIGHT_124 / X6Y5 (room-c-light-124)	none	14.14	-11.234	7.6	0	180	0	1
+c_DISP_E	surface	MON 2 / East (room-c-mon-02)	none	1.115	0	1.78	90	0	90	1
+c_DISP_W	surface	MON 4 / West (room-c-mon-04)	none	-1.115	0	1.78	-90	0	-90	1
+c_DISP_N	surface	MON 1 / North (room-c-mon-01)	none	0	1.115	1.78	180	-90	0	1
+c_DISP_S	surface	MON 3 / South (room-c-mon-03)	none	0	-1.115	1.78	0	90	0	1
+
+[SPEAKER]
+# ID	Channel	Gain	Delay	Mute
+c_SPK_101	1	0	0	0
+c_SPK_102	2	0	0	0
+c_SPK_103	3	0	0	0
+c_SPK_104	4	0	0	0
+c_SPK_105	5	0	0	0
+c_SPK_106	6	0	0	0
+c_SPK_107	7	0	0	0
+c_SPK_108	8	0	0	0
+c_SPK_109	9	0	0	0
+c_SPK_110	10	0	0	0
+c_SPK_111	11	0	0	0
+c_SPK_112	12	0	0	0
+c_SPK_113	13	0	0	0
+c_SPK_114	14	0	0	0
+c_SPK_115	15	0	0	0
+c_SPK_116	16	0	0	0
+c_SPK_117	17	0	0	0
+c_SPK_118	18	0	0	0
+c_SPK_119	19	0	0	0
+c_SPK_120	20	0	0	0
+c_SPK_121	21	0	0	0
+c_SPK_122	22	0	0	0
+c_SPK_123	23	0	0	0
+c_SPK_124	24	0	0	0
+
+[REVIEW_VOLUME]
+# Width	Depth	Height	Status
+28.43	24.841	7.904	OUTPUT_REVIEW_EXTENT_NOT_ROOM_WALLS
+
+[EVIDENCE]
+# ID	PositionStatus	OrientationStatus	SourceID	SourceKey	Note
+c_SPK_101	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_101_bwv4x8	Unit 101 (X1Y1): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 1 pending audio-team confirmation.
+c_SPK_102	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_102_bwv4x8	Unit 102 (X2Y1): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 2 pending audio-team confirmation.
+c_SPK_103	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_103_bwv4x8	Unit 103 (X3Y1): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 3 pending audio-team confirmation.
+c_SPK_104	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_104_bwv4x8	Unit 104 (X4Y1): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 4 pending audio-team confirmation.
+c_SPK_105	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_105_bwv4x8	Unit 105 (X5Y1): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 5 pending audio-team confirmation.
+c_SPK_106	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_106_bwv4x8	Unit 106 (X6Y1): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 6 pending audio-team confirmation.
+c_SPK_107	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_107_bwv4x8	Unit 107 (X2Y2): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 7 pending audio-team confirmation.
+c_SPK_108	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_108_bwv4x8	Unit 108 (X3Y2): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 8 pending audio-team confirmation.
+c_SPK_109	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_109_bwv4x8	Unit 109 (X4Y2): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 9 pending audio-team confirmation.
+c_SPK_110	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_110_bwv4x8	Unit 110 (X5Y2): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 10 pending audio-team confirmation.
+c_SPK_111	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_111_bwv4x8	Unit 111 (X2Y3): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 11 pending audio-team confirmation.
+c_SPK_112	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_112_bwv4x8	Unit 112 (X3Y3): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 12 pending audio-team confirmation.
+c_SPK_113	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_113_bwv4x8	Unit 113 (X4Y3): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 13 pending audio-team confirmation.
+c_SPK_114	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_114_bwv4x8	Unit 114 (X5Y3): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 14 pending audio-team confirmation.
+c_SPK_115	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_115_bwv4x8	Unit 115 (X2Y4): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 15 pending audio-team confirmation.
+c_SPK_116	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_116_bwv4x8	Unit 116 (X3Y4): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 16 pending audio-team confirmation.
+c_SPK_117	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_117_bwv4x8	Unit 117 (X4Y4): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 17 pending audio-team confirmation.
+c_SPK_118	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_118_bwv4x8	Unit 118 (X5Y4): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 18 pending audio-team confirmation.
+c_SPK_119	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_119_bwv4x8	Unit 119 (X1Y5): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 19 pending audio-team confirmation.
+c_SPK_120	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_120_bwv4x8	Unit 120 (X2Y5): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 20 pending audio-team confirmation.
+c_SPK_121	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_121_bwv4x8	Unit 121 (X3Y5): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 21 pending audio-team confirmation.
+c_SPK_122	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_122_bwv4x8	Unit 122 (X4Y5): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 22 pending audio-team confirmation.
+c_SPK_123	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_123_bwv4x8	Unit 123 (X5Y5): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 23 pending audio-team confirmation.
+c_SPK_124	SOURCE_MODEL	WORKING_DIRECTION	c-speaker-bounds	UNIT_124_bwv4x8	Unit 124 (X6Y5): speaker+camera+light hung as one 1800x300 box; object pose is the BWV 4x8 AABB centre, grille face Z 7.5995 m (design FL+7.600). Local +Z = radiation axis (Room C working convention), aimed straight down; array long axis N-S. Logical ch 24 pending audio-team confirmation.
+c_CAM_101	SOURCE_MODEL	WORKING_DIRECTION	c-units	101	Unit 101 (X1Y1): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_102	SOURCE_MODEL	WORKING_DIRECTION	c-units	102	Unit 102 (X2Y1): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_103	SOURCE_MODEL	WORKING_DIRECTION	c-units	103	Unit 103 (X3Y1): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_104	SOURCE_MODEL	WORKING_DIRECTION	c-units	104	Unit 104 (X4Y1): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_105	SOURCE_MODEL	WORKING_DIRECTION	c-units	105	Unit 105 (X5Y1): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_106	SOURCE_MODEL	WORKING_DIRECTION	c-units	106	Unit 106 (X6Y1): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_107	SOURCE_MODEL	WORKING_DIRECTION	c-units	107	Unit 107 (X2Y2): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_108	SOURCE_MODEL	WORKING_DIRECTION	c-units	108	Unit 108 (X3Y2): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_109	SOURCE_MODEL	WORKING_DIRECTION	c-units	109	Unit 109 (X4Y2): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_110	SOURCE_MODEL	WORKING_DIRECTION	c-units	110	Unit 110 (X5Y2): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_111	SOURCE_MODEL	WORKING_DIRECTION	c-units	111	Unit 111 (X2Y3): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_112	SOURCE_MODEL	WORKING_DIRECTION	c-units	112	Unit 112 (X3Y3): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_113	SOURCE_MODEL	WORKING_DIRECTION	c-units	113	Unit 113 (X4Y3): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_114	SOURCE_MODEL	WORKING_DIRECTION	c-units	114	Unit 114 (X5Y3): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_115	SOURCE_MODEL	WORKING_DIRECTION	c-units	115	Unit 115 (X2Y4): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_116	SOURCE_MODEL	WORKING_DIRECTION	c-units	116	Unit 116 (X3Y4): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_117	SOURCE_MODEL	WORKING_DIRECTION	c-units	117	Unit 117 (X4Y4): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_118	SOURCE_MODEL	WORKING_DIRECTION	c-units	118	Unit 118 (X5Y4): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_119	SOURCE_MODEL	WORKING_DIRECTION	c-units	119	Unit 119 (X1Y5): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_120	SOURCE_MODEL	WORKING_DIRECTION	c-units	120	Unit 120 (X2Y5): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_121	SOURCE_MODEL	WORKING_DIRECTION	c-units	121	Unit 121 (X3Y5): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_122	SOURCE_MODEL	WORKING_DIRECTION	c-units	122	Unit 122 (X4Y5): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_123	SOURCE_MODEL	WORKING_DIRECTION	c-units	123	Unit 123 (X5Y5): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_CAM_124	SOURCE_MODEL	WORKING_DIRECTION	c-units	124	Unit 124 (X6Y5): lens centre, 0.69 m south of the speaker centre, FL+7.6 m, looking straight down. Local +X = image right, +Y = image down, +Z = optical axis (Room C working convention): image left = N, right = S, top = E, bottom = W; long side N-S. Mounting roll uncalibrated. Device IP OPEN.
+c_LIGHT_101	SOURCE_MODEL	WORKING_DIRECTION	c-lights	101	Unit 101 (X1Y1): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_102	SOURCE_MODEL	WORKING_DIRECTION	c-lights	102	Unit 102 (X2Y1): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_103	SOURCE_MODEL	WORKING_DIRECTION	c-lights	103	Unit 103 (X3Y1): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_104	SOURCE_MODEL	WORKING_DIRECTION	c-lights	104	Unit 104 (X4Y1): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_105	SOURCE_MODEL	WORKING_DIRECTION	c-lights	105	Unit 105 (X5Y1): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_106	SOURCE_MODEL	WORKING_DIRECTION	c-lights	106	Unit 106 (X6Y1): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_107	SOURCE_MODEL	WORKING_DIRECTION	c-lights	107	Unit 107 (X2Y2): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_108	SOURCE_MODEL	WORKING_DIRECTION	c-lights	108	Unit 108 (X3Y2): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_109	SOURCE_MODEL	WORKING_DIRECTION	c-lights	109	Unit 109 (X4Y2): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_110	SOURCE_MODEL	WORKING_DIRECTION	c-lights	110	Unit 110 (X5Y2): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_111	SOURCE_MODEL	WORKING_DIRECTION	c-lights	111	Unit 111 (X2Y3): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_112	SOURCE_MODEL	WORKING_DIRECTION	c-lights	112	Unit 112 (X3Y3): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_113	SOURCE_MODEL	WORKING_DIRECTION	c-lights	113	Unit 113 (X4Y3): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_114	SOURCE_MODEL	WORKING_DIRECTION	c-lights	114	Unit 114 (X5Y3): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_115	SOURCE_MODEL	WORKING_DIRECTION	c-lights	115	Unit 115 (X2Y4): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_116	SOURCE_MODEL	WORKING_DIRECTION	c-lights	116	Unit 116 (X3Y4): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_117	SOURCE_MODEL	WORKING_DIRECTION	c-lights	117	Unit 117 (X4Y4): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_118	SOURCE_MODEL	WORKING_DIRECTION	c-lights	118	Unit 118 (X5Y4): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_119	SOURCE_MODEL	WORKING_DIRECTION	c-lights	119	Unit 119 (X1Y5): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_120	SOURCE_MODEL	WORKING_DIRECTION	c-lights	120	Unit 120 (X2Y5): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_121	SOURCE_MODEL	WORKING_DIRECTION	c-lights	121	Unit 121 (X3Y5): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_122	SOURCE_MODEL	WORKING_DIRECTION	c-lights	122	Unit 122 (X4Y5): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_123	SOURCE_MODEL	WORKING_DIRECTION	c-lights	123	Unit 123 (X5Y5): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_LIGHT_124	SOURCE_MODEL	WORKING_DIRECTION	c-lights	124	Unit 124 (X6Y5): centre of the D150 aperture in the unit box, 0.69 m north of the speaker centre, FL+7.6 m. Local +Z = beam axis (Room C working convention), aimed at nadir; beam 46 deg, field 86 deg. Control, DMX addressing and power OPEN.
+c_DISP_E	SOURCE_WORKING	PROXY	c-displays	DISP_E	Monitor face, zero thickness; outward normal is a declared proxy; source azimuth 90 deg. Monitor 2 = room-c-mon-02 (2026-09-19: 1-4 from north, clockwise). Input Mac/raster/GPU OPEN.
+c_DISP_W	SOURCE_WORKING	PROXY	c-displays	DISP_W	Monitor face, zero thickness; outward normal is a declared proxy; source azimuth 270 deg. Monitor 4 = room-c-mon-04 (2026-09-19: 1-4 from north, clockwise). Input Mac/raster/GPU OPEN.
+c_DISP_N	SOURCE_WORKING	PROXY	c-displays	DISP_N	Monitor face, zero thickness; outward normal is a declared proxy; source azimuth 0 deg. Monitor 1 = room-c-mon-01 (2026-09-19: 1-4 from north, clockwise). Input Mac/raster/GPU OPEN.
+c_DISP_S	SOURCE_WORKING	PROXY	c-displays	DISP_S	Monitor face, zero thickness; outward normal is a declared proxy; source azimuth 180 deg. Monitor 3 = room-c-mon-03 (2026-09-19: 1-4 from north, clockwise). Input Mac/raster/GPU OPEN.
+
+[BOX]
+# ID	SizeX	SizeY	SizeZ
+c_SPK_101	0.15	1.001	0.3045
+c_SPK_102	0.15	1.001	0.3045
+c_SPK_103	0.15	1.001	0.3045
+c_SPK_104	0.15	1.001	0.3045
+c_SPK_105	0.15	1.001	0.3045
+c_SPK_106	0.15	1.001	0.3045
+c_SPK_107	0.15	1.001	0.3045
+c_SPK_108	0.15	1.001	0.3045
+c_SPK_109	0.15	1.001	0.3045
+c_SPK_110	0.15	1.001	0.3045
+c_SPK_111	0.15	1.001	0.3045
+c_SPK_112	0.15	1.001	0.3045
+c_SPK_113	0.15	1.001	0.3045
+c_SPK_114	0.15	1.001	0.3045
+c_SPK_115	0.15	1.001	0.3045
+c_SPK_116	0.15	1.001	0.3045
+c_SPK_117	0.15	1.001	0.3045
+c_SPK_118	0.15	1.001	0.3045
+c_SPK_119	0.15	1.001	0.3045
+c_SPK_120	0.15	1.001	0.3045
+c_SPK_121	0.15	1.001	0.3045
+c_SPK_122	0.15	1.001	0.3045
+c_SPK_123	0.15	1.001	0.3045
+c_SPK_124	0.15	1.001	0.3045
+c_CAM_101	0.08	0.08	0.08
+c_CAM_102	0.08	0.08	0.08
+c_CAM_103	0.08	0.08	0.08
+c_CAM_104	0.08	0.08	0.08
+c_CAM_105	0.08	0.08	0.08
+c_CAM_106	0.08	0.08	0.08
+c_CAM_107	0.08	0.08	0.08
+c_CAM_108	0.08	0.08	0.08
+c_CAM_109	0.08	0.08	0.08
+c_CAM_110	0.08	0.08	0.08
+c_CAM_111	0.08	0.08	0.08
+c_CAM_112	0.08	0.08	0.08
+c_CAM_113	0.08	0.08	0.08
+c_CAM_114	0.08	0.08	0.08
+c_CAM_115	0.08	0.08	0.08
+c_CAM_116	0.08	0.08	0.08
+c_CAM_117	0.08	0.08	0.08
+c_CAM_118	0.08	0.08	0.08
+c_CAM_119	0.08	0.08	0.08
+c_CAM_120	0.08	0.08	0.08
+c_CAM_121	0.08	0.08	0.08
+c_CAM_122	0.08	0.08	0.08
+c_CAM_123	0.08	0.08	0.08
+c_CAM_124	0.08	0.08	0.08
+
+[FOV]
+# ID	Horizontal	Vertical	Distance	Status
+c_CAM_101	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_102	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_103	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_104	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_105	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_106	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_107	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_108	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_109	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_110	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_111	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_112	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_113	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_114	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_115	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_116	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_117	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_118	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_119	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_120	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_121	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_122	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_123	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+c_CAM_124	42.5	24.6	7.6	MEASURED_FOV_WORKING_FOOTPRINT
+
+[SURFACE]
+# ID	Width	Height
+c_DISP_E	0.94	1.66
+c_DISP_W	0.94	1.66
+c_DISP_N	0.94	1.66
+c_DISP_S	0.94	1.66
+
+[DEVICE]
+# ID	Model	Technology
+c_DISP_E	75-inch tower monitor	LCD_FACE_ONLY
+c_DISP_W	75-inch tower monitor	LCD_FACE_ONLY
+c_DISP_N	75-inch tower monitor	LCD_FACE_ONLY
+c_DISP_S	75-inch tower monitor	LCD_FACE_ONLY
+c_CAM_101	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_102	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_103	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_104	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_105	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_106	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_107	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_108	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_109	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_110	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_111	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_112	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_113	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_114	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_115	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_116	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_117	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_118	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_119	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_120	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_121	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_122	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_123	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_CAM_124	Seeed reCamera 2002w	OV5647_1080P_CENTRE_CROP
+c_LIGHT_101	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_102	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_103	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_104	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_105	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_106	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_107	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_108	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_109	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_110	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_111	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_112	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_113	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_114	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_115	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_116	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_117	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_118	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_119	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_120	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_121	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_122	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_123	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+c_LIGHT_124	CKC Mini Blinder 270W RGBWAL	LED_WASH_RGBWAL
+
+[INVENTORY]
+# ID	Type	Model	Quantity	Status	Note
+c_amp	custom	Linea Research 48M20	3	SOURCE_CONFIRMED	Final routing OPEN
+c_poe	custom	L2 PoE switch	1	TBC	Placement OPEN
+c_dante	custom	Dante switch	1	SOURCE_DIAGRAM	Clock and signal path OPEN
+c_dme	custom	Yamaha DME7	1	SOURCE_DIAGRAM	Shared system; allocation OPEN
+c_artnet	custom	ArtNet node	4	TBD	Universes and addressing OPEN
+
+[UNRESOLVED]
+# ID	Topic	Detail
+c-routing	DISPLAY / PIXELMAP / SPEAKER	Four monitor faces have no confirmed pixel raster or GPU mapping; audio channels OPEN. No projector or projection screen in Room C.
+c-light-control	LIGHT	24 CKC Mini Blinder fixtures are placed, but control system, DMX universe/address and power are undecided (io-spec IO-024), so no LIGHT section yet.
+c-unit-hanging	OBJECT	Venue file keeps the unit boxes at FL+8.0 m, 320 high, V-bridle wires; the master uses FL+7.6 m (override 2026-09-19), 360 high, two rigid pipes. Camera coverage is not continuous between units (io-spec IO-023).
+c-audio-channels	SPEAKER	Units renumbered 2026-09-19 (101 = NW corner, row by row, W to E). Working rule logical/Dante ch n = SPK_(100+n), amps 48M20 x3 = ch 1-8 / 9-16 / 17-24; awaiting audio-team confirmation (io-spec IO-022); the SPEAKER section in this copy applies that rule for the example.
+
+# Shared inventory, not a per-room allocation
+[SHARED_INVENTORY]
+# ID	Model	Quantity	Status
+mac_studio_pool	Apple Mac Studio M2	6 exhibition-wide	ROOM_ALLOCATION_OPEN

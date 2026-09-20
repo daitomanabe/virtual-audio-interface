@@ -186,12 +186,12 @@ struct SpeakerSceneView: NSViewRepresentable {
                 drawn = true
             }
             if o.type == "camera" || o.type == "projector" {
-                // Small viewing pyramid along local -Z (see README: SSD defines no optical axis) with a
-                // tick on its top edge (local +Y).
+                // Small viewing pyramid along local +Z (see README: the axis the format's reference
+                // viewer draws) with a tick marking the local +Y edge.
                 let angles = o.cameraFov ?? o.fov.map { SIMD2($0.x, $0.y) } ?? SIMD2(50, 35)
                 let base = frustumCorners(angles.x, angles.y, 0.35)
                 let top = base[2].y, tick: [(SIMD3<Double>, SIMD3<Double>)] = [
-                    ([-0.06, top, -0.35], [0, top + 0.07, -0.35]), ([0, top + 0.07, -0.35], [0.06, top, -0.35])]
+                    ([-0.06, top, 0.35], [0, top + 0.07, 0.35]), ([0, top + 0.07, 0.35], [0.06, top, 0.35])]
                 holder.addChildNode(lines(pyramid(base) + tick, color: Theme.objectDevice))
                 drawn = true
             }
@@ -495,10 +495,11 @@ private func boxCorners(_ size: SIMD3<Double>) -> [SIMD3<Double>] {
     (0..<8).map { i in size / 2 * SIMD3(i & 1 == 0 ? -1 : 1, i & 2 == 0 ? -1 : 1, i & 4 == 0 ? -1 : 1) }
 }
 
-/// Far rectangle of a view looking along local -Z (X right, Y up), `distance` away.
+/// Far rectangle of a view looking along local +Z (X right), `distance` away. +Z matches the format's
+/// reference viewer, which draws its FOV quad at local (±w, ±h, +distance).
 private func frustumCorners(_ horizontalDeg: Double, _ verticalDeg: Double, _ distance: Double) -> [SIMD3<Double>] {
     let half = { (deg: Double) in distance * tan(deg / 2 * .pi / 180) }
-    return rectCorners([2 * half(horizontalDeg), 2 * half(verticalDeg)], z: -distance)
+    return rectCorners([2 * half(horizontalDeg), 2 * half(verticalDeg)], z: distance)
 }
 
 /// Edges from the origin to each corner plus the corner loop.

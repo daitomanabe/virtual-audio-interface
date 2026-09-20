@@ -192,9 +192,10 @@ With **View → Scene objects** on (the default), every other OBJECT is drawn in
 | any other type (microphone, …) | small marker; rigs that only hold other objects stay unlabeled |
 
 Rectangles follow the spec: local X right, Y up, +Z front normal, centered; `(Yaw, Pitch, Roll) = (0, 90, 0)`
-stands one upright facing world −Y. SSD v0.1 does not define an optical axis for cameras, projectors or FOV;
-**this app draws them looking along local −Z** with X right and Y up (the rectangle's image frame), so
-`(0, 90, 0)` looks toward world +Y and the zero pose looks straight down. Poses go to SceneKit as
+stands one upright facing world −Y. The format reference does not state an optical axis for cameras,
+projectors or FOV in prose, but its reference viewer draws the FOV quad at local (±w, ±h, +Distance), and the
+room datasets declare the same; **this app draws them looking along local +Z**, so `(0, −90, 0)` looks toward
+world +Y and `(0, 180, 0)` looks straight down. Poses go to SceneKit as
 B·M·B⁻¹ (`ssdb_matrix_to_scenekit`), never as reused Euler angles. A geometry row with invalid values is
 skipped with a parser warning; the speakers still load. `[REVIEW_VOLUME]` is not drawn.
 
@@ -291,8 +292,9 @@ See [TODO.md](TODO.md) — UI polish, pass-through monitoring, notarization and 
 
 ## See also
 
-- [daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format) — the `.sscene` format: full
-  specification, reference reader and more example scenes
+- [daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format) — where the `.sscene` format was
+  published. It has moved to `daitomanabe/spatial-scene-definition`, which holds the specification,
+  the reference reader and viewer and more example scenes
 
 ## License
 

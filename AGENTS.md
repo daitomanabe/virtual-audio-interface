@@ -37,7 +37,8 @@ If the x86_64 Swift build fails with "not registered", delete `VisualizerApp/.bu
 - Never bring the app to the front (`NSApp.activate`, `orderFrontRegardless`, floating levels). `--docshot` orders its
   window to the back. Keep the App Nap-suppressing activity and common-mode timers so the app keeps working behind a DAW.
 - The SSD parser (`VisualizerApp/Sources/SSDBridge/ssd_reader.h`) is an independent MIT implementation. Do not copy code
-  from the reference reader in github.com/daitomanabe/ssd-format; cross-check behavior against it instead.
+  from the reference reader (github.com/daitomanabe/spatial-scene-definition, formerly ssd-format);
+  cross-check behavior against it instead. Its reference viewer is what settled the device axis as local +Z.
 - All UI text is English.
 
 ## Side effects that need the user's approval

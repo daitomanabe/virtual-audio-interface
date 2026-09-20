@@ -28,7 +28,7 @@ Start by checking the real checkout, branch/worktree, and dirty state. Do not as
 | Driver (AudioServerPlugIn, one 128 ch output device) | `HALPlugin/src/VirtualAudioDevicePlugin.cpp`, `HALPlugin/Info.plist`, `HALPlugin/Makefile` | `[VERIFIED]` builds warning-free; ASan harness passes |
 | Driver ↔ app shared memory (`/vai_meter_v3`) | `Shared/MeterShm.h` (identical copy in `VisualizerApp/Sources/AudioBridge/include/`) | `[VERIFIED]` both copies identical at capture |
 | SSD parser and bridge | `VisualizerApp/Sources/SSDBridge/ssd_reader.h`, `ssd_bridge.cpp`, `include/ssd_bridge.h` | `[VERIFIED]` independent implementation, cross-checked against the reference reader of github.com/daitomanabe/ssd-format |
-| SSD format specification | github.com/daitomanabe/ssd-format (public, MIT) | `[VERIFIED]` README links it; the camera/projector optical axis is not defined there (see Blockers) |
+| SSD format specification | github.com/daitomanabe/spatial-scene-definition (MIT). `ssd-format` is now a stub that points to it | `[VERIFIED]` 2026-09-20: `docs/format.md` states the rotation order this app already used; the device axis is still not stated in prose but its reference viewer draws FOV at local +Z |
 | App (SwiftUI in an AppKit window) | `VisualizerApp/Sources/VisualizerApp/` (`App.swift` entry and CLI modes, `DriverController.swift`, `AudioLevelsModel.swift`, `SpeakerSceneView.swift`, `RoutingPanel.swift`, `LevelMeterGridView.swift`, `TestSignal*.swift`, `Theme.swift`) | `[VERIFIED]` builds with 0 warnings |
 | Test signal DSP (C, realtime-safe) | `VisualizerApp/Sources/TestSignalDSP/` | `[VERIFIED]` `tsgcheck` passes; measured on the live driver |
 | Version | `VERSION` (`0.2.0`); build number = `git rev-list --count HEAD` | `[VERIFIED]` |
@@ -75,8 +75,9 @@ Start by checking the real checkout, branch/worktree, and dirty state. Do not as
 ## Blockers and Decisions Needed
 
 - `[BLOCKED]` Notarization needs an Apple Developer ID — owner/input needed: the user; safe workaround: current ad-hoc signed pkg with documented Gatekeeper steps.
-- `[UNKNOWN]` SSD v0.1 does not define the optical axis of cameras, projectors and FOVs; the app assumes local −Z (README "Scene objects"). Do not change this silently — it should be settled in github.com/daitomanabe/ssd-format first.
-- `[UNKNOWN]` SSD does not define a speaker forward axis, so speaker aim is intentionally not drawn.
+- `[VERIFIED]` Resolved 2026-09-20: the device axis is local **+Z**, not the −Z this app assumed. Evidence: the spec repo's reference viewer draws its FOV quad at local (±w, ±h, +Distance) (`apps/ssdViewer/src/ofApp.cpp`), and the room datasets declare "Local +Z = optical/radiation axis" per object. Confirmation: `Examples/FIL-v1.sscene`'s surveyed projector then aims at its own wall image. `venue-demo` poses were converted by composing Rx(180) locally, so they point where they always did.
+- `[UNKNOWN]` SSD does not define a speaker forward axis, so speaker aim is still not drawn. `room-c` declares one per object in `[EVIDENCE]`, but that is a per-scene convention, not the format.
+- `[UNKNOWN]` The public README links `ssd-format`, which now only says the format moved to a repository that is private, so a public reader reaches a dead end. Decide whether `spatial-scene-definition` becomes public.
 
 ## Reproduction / Verification
 
@@ -122,4 +123,5 @@ Do not treat the conversation summary as a substitute for this document. Do not 
 | Timestamp | Agent / session label | Change | Evidence |
 | --- | --- | --- | --- |
 | `2026-09-18` | `Claude Code` | initial capture after the v0.2.0 release | `make -C Tools check`, `make -C Tools harness`, `gh release view v0.2.0` |
-| `2026-09-18` | `Claude Code` | added `Examples/FIL-v1.sscene` (assumed speaker patch), README screenshots retaken from it, screenshot recipe in `AGENTS.md`; pushed to `origin/main` on the user's request | `make -C Tools check` → `ssdcheck OK`; docshot PNGs inspected |
+| `2026-09-18` | `Claude Code` | added `Examples/FIL-v1.sscene` (assumed speaker patch), README screenshots retaken from it, screenshot recipe in `AGENTS.md`; pushed to `origin/main` on the user's request |
+| `2026-09-20` | `Claude Code` | Fable 5.1 review of FIL-v1 applied (pushed); then the device axis corrected to local +Z and `Examples/room-c.sscene` added — **not pushed** | `make -C Tools check`, docshot of room-c and FIL-v1 | `make -C Tools check` → `ssdcheck OK`; docshot PNGs inspected |

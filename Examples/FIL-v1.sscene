@@ -2,9 +2,7 @@
 # Working study exported from a venue survey; positions are estimates (see [EVIDENCE] / [UNRESOLVED]).
 # The [SPEAKER] rows were added for this example and are an assumption, not a confirmed patch.
 # Light names were translated from Japanese; house left/right is as seen from the audience (-X / +X here).
-# PJ 01 keeps its surveyed pose. Drawn along this app's assumed optical axis (local -Z) it faces world -X,
-# not the wall image on +X: the source marks the horizontal pose provisional and SSD v0.1 does not define
-# the optical axis, so the numbers are left as surveyed rather than turned to match the assumption.
+# PJ 01's surveyed pose aims along local +Z at the wall image on +X; the source still marks it provisional.
 
 [SCENE]
 Version	0.1

@@ -130,15 +130,16 @@ static void objectChecks() {
     assert(pj.target == objectIndex(n, "scr") && pj.hasFov && near(pj.fovDistance, 11) && !pj.hasCamera);
     const double toRad = std::acos(-1.0) / 180;
     const double hx = 11 * std::tan(pj.fovHorizontal / 2 * toRad), hy = 11 * std::tan(pj.fovVertical / 2 * toRad);
-    assert(is(apply(pj.world, {hx, hy, -11}), 4, 6, 5.45, 1e-2)); // the app's convention: view along local -Z
+    // View along local +Z; the Rx(180) conversion put local +Y opposite the screen's up, so -hy is its top.
+    assert(is(apply(pj.world, {hx, -hy, 11}), 4, 6, 5.45, 1e-2));
 
     const SSDBObjectInfo &camTop = objects[objectIndex(n, "camTop")];
     assert(camTop.hasCamera && near(camTop.cameraFovH, 70) && camTop.hasFov && near(camTop.fovDistance, 5.49));
-    assert(is(apply(camTop.world, {0, 0, -1}, false), 0, 0, -1)); // zero pose looks down
+    assert(is(apply(camTop.world, {0, 0, 1}, false), 0, 0, -1)); // (0, 180, 0) looks down
     const SSDBObjectInfo &camStage = objects[objectIndex(n, "camStage")];
     const double c15 = std::cos(15 * toRad), s15 = std::sin(15 * toRad);
-    assert(is(apply(camStage.world, {0, 0, -1}, false), 0, -c15, -s15) &&
-           is(apply(camStage.world, {0, 1, 0}, false), 0, -s15, c15)); // up leans forward with the tilt
+    assert(is(apply(camStage.world, {0, 0, 1}, false), 0, -c15, -s15) &&
+           is(apply(camStage.world, {0, 1, 0}, false), 0, s15, -c15)); // local +Y leans back with the tilt
     assert(!objects[objectIndex(n, "camSpare")].active);
     const SSDBObjectInfo &stage = objects[objectIndex(n, "stage")];
     assert(stage.hasBox && near(stage.sizeX, 12) && near(stage.sizeY, 2.5) && near(stage.sizeZ, 0.8) && !stage.hasRect);
@@ -232,9 +233,9 @@ int main() {
     assert(n == 35 && warnings[0] == '\0');  // 1 room + 16 speakers + 16 lights + projector + wall image
     const SSDBObjectInfo &wall = objects[objectIndex(n, "projection-wall-01")];
     assert(wall.hasRect && near(wall.width, 3.9) && is(apply(wall.world, {0, 0, 1}, false), -1, 0, 0)); // faces -X
-    // The surveyed projector pose does not aim at that wall: along this app's assumed optical axis
-    // (local -Z) it faces world -X. Kept as surveyed, see the file's header comment.
-    assert(is(apply(objects[objectIndex(n, "projector-01")].world, {0, 0, -1}, false), -1, 0, 0));
+    // Read along local +Z the surveyed projector pose aims at that wall (+X), which is what the
+    // room was built to do. Under the -Z reading this app used before it pointed the other way.
+    assert(is(apply(objects[objectIndex(n, "projector-01")].world, {0, 0, 1}, false), 1, 0, 0));
 
     assert(ssdb_load_scene("../Examples/missing.sscene", &info, sp, SSDB_MAX_SPEAKERS, warnings,
                            sizeof warnings, err, sizeof err) == -1 && err[0]);

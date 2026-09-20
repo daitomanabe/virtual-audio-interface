@@ -199,9 +199,10 @@ AngleUnit	degree
 | それ以外の type(microphone など) | 小さなマーカー。他の要素をまとめるだけのリグにはラベルを付けない |
 
 矩形は仕様どおり、ローカル X が右、Y が上、+Z が前面の法線で、中心が原点です。`(Yaw, Pitch, Roll) = (0, 90, 0)`
-で直立し、world −Y を向きます。SSD v0.1 はカメラ、プロジェクター、FOV の光軸を定義していないため、
-**このアプリではローカル −Z 方向を見ているもの**(X が右、Y が上。矩形の画像座標と同じ)として描きます。
-つまり `(0, 90, 0)` で world +Y を向き、回転ゼロでは真下を向きます。姿勢は B·M·B⁻¹
+で直立し、world −Y を向きます。形式の仕様書はカメラ、プロジェクター、FOV の光軸を文章では定めていませんが、
+参照ビューアが FOV をローカル (±w, ±h, +Distance) に描き、部屋のデータセットも同じ規約を宣言しています。
+そのため **このアプリではローカル +Z 方向を見ているもの**として描きます。つまり `(0, −90, 0)` で world +Y、
+`(0, 180, 0)` で真下を向きます。姿勢は B·M·B⁻¹
 (`ssdb_matrix_to_scenekit`)で SceneKit に渡し、Euler 角を流用しません。値が不正な行は読み飛ばして
 パーサー警告にし、スピーカーは通常どおり読み込みます。`[REVIEW_VOLUME]` は描きません。
 
@@ -306,8 +307,8 @@ packaging/        インストーラー(pkg)のビルド、アンインストー
 
 ## 関連
 
-- [daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format) — `.sscene` 形式の仕様、参照実装、
-  サンプルシーン
+- [daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format) — `.sscene` 形式が公開されていた場所。
+  仕様、参照実装とビューア、サンプルシーンは `daitomanabe/spatial-scene-definition` に移りました
 
 ## ライセンス
 
