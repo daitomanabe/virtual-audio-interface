@@ -62,7 +62,7 @@ Ableton Live などからは本物のオーディオインターフェースと�
    一度開いてから **システム設定 → プライバシーとセキュリティ** で、パッケージについての表示の横にある
    **このまま開く** をクリックしてください。ターミナルで隔離属性を外す方法もあります。
    ```bash
-   xattr -d com.apple.quarantine ~/Downloads/VirtualAudioInterface-0.2.0.pkg
+   xattr -d com.apple.quarantine ~/Downloads/VirtualAudioInterface-0.3.0.pkg
    ```
 3. インストーラーを実行します。次の 2 つが入ります。
    - `/Applications/VirtualAudioInterface.app`
