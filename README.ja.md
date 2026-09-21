@@ -86,7 +86,8 @@ sudo ./uninstall.sh
 
 1. **Virtual Audio Interface** を開きます。右上の点が緑ならドライバが読み込まれています。隣のメニューで
    ドライバの ON / Update / OFF と詳細を確認できます。
-2. DAW の出力デバイスに **Virtual Audio Interface (128ch)** を選びます。
+2. DAW の出力デバイスに、初期状態では **Virtual Audio Interface (128ch)** を選びます。
+   Settings でチャンネル数を変更すると、デバイス名も `(24ch)` のように追従します。
    Ableton Live では *設定 → オーディオ → オーディオ出力デバイス* で選び、*出力設定* で使うチャンネルを
    有効にします。
 3. **Open…**(⌘O)で配置ファイルを開くか、`.sscene` をウィンドウにドロップします。

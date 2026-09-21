@@ -50,7 +50,6 @@ const AudioObjectID kStreamObjectID = 3;
 
 CFStringRef kDeviceUID = CFSTR("com.daitomanabe.virtualaudiointerface.device");
 CFStringRef kModelUID = CFSTR("com.daitomanabe.virtualaudiointerface.model");
-CFStringRef kDeviceName = CFSTR("Virtual Audio Interface (128ch)");
 CFStringRef kManufacturer = CFSTR("daitomanabe");
 CFStringRef kPlugInBundleName = CFSTR("VirtualAudioInterfaceDriver");
 CFStringRef kEmptyString = CFSTR("");
@@ -313,10 +312,11 @@ OSStatus Plugin_PerformDeviceConfigurationChange(AudioServerPlugInDriverRef, Aud
         gPlugInHost->PropertiesChanged(gPlugInHost, kStreamObjectID, 2, streamAddrs);
 
         AudioObjectPropertyAddress deviceAddrs[] = {
+            {kAudioObjectPropertyName, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain},
             {kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain},
             {kAudioDevicePropertyPreferredChannelLayout, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain},
         };
-        gPlugInHost->PropertiesChanged(gPlugInHost, kDeviceObjectID, 2, deviceAddrs);
+        gPlugInHost->PropertiesChanged(gPlugInHost, kDeviceObjectID, 3, deviceAddrs);
     }
     return kAudioHardwareNoError;
 }
@@ -380,6 +380,11 @@ void StartConfigPollTimer() {
 // ---- property helpers ------------------------------------------------
 
 CFStringRef CopyCFString(CFStringRef s) { return static_cast<CFStringRef>(CFRetain(s)); }
+
+CFStringRef CopyDeviceName() {
+    UInt32 channels = gChannelCount.load(std::memory_order_relaxed);
+    return CFStringCreateWithFormat(nullptr, nullptr, CFSTR("Virtual Audio Interface (%uch)"), channels);
+}
 
 bool IsPlugInObject(AudioObjectID objectID) { return objectID == kPlugInObjectID; }
 bool IsDeviceObject(AudioObjectID objectID) { return objectID == kDeviceObjectID; }
@@ -676,7 +681,7 @@ OSStatus Plugin_GetPropertyData(AudioServerPlugInDriverRef, AudioObjectID inObje
                 return kAudioHardwareNoError;
             case kAudioObjectPropertyName:
                 if (inDataSize < sizeof(CFStringRef)) return kAudioHardwareBadPropertySizeError;
-                *static_cast<CFStringRef *>(outData) = CopyCFString(kDeviceName);
+                *static_cast<CFStringRef *>(outData) = CopyDeviceName();
                 *outDataSize = sizeof(CFStringRef);
                 return kAudioHardwareNoError;
             case kAudioObjectPropertyManufacturer:
@@ -825,7 +830,7 @@ OSStatus Plugin_GetPropertyData(AudioServerPlugInDriverRef, AudioObjectID inObje
                 return kAudioHardwareNoError;
             case kAudioObjectPropertyName:
                 if (inDataSize < sizeof(CFStringRef)) return kAudioHardwareBadPropertySizeError;
-                *static_cast<CFStringRef *>(outData) = CopyCFString(kDeviceName);
+                *static_cast<CFStringRef *>(outData) = CopyDeviceName();
                 *outDataSize = sizeof(CFStringRef);
                 return kAudioHardwareNoError;
             case kAudioStreamPropertyDirection:

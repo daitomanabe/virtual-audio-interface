@@ -82,7 +82,8 @@ To only unload the driver and keep the app, choose **Turn Driver Off** in the ap
 
 1. Open **Virtual Audio Interface**. The dot at the top right is green when the driver is loaded; the menu
    next to it turns the driver on, updates or turns it off and shows its details.
-2. In your DAW, select **Virtual Audio Interface (128ch)** as the output device.
+2. In your DAW, select **Virtual Audio Interface (128ch)** as the output device by default. The name
+   follows the configured channel count after you change it in Settings (for example, `(24ch)`).
    In Ableton Live: *Settings → Audio → Audio Output Device*, then enable the channels you need in
    *Output Config*.
 3. Open a layout with **Open…** (⌘O) or drop a `.sscene` file on the window.

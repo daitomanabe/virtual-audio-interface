@@ -30,7 +30,7 @@ Planned work, roughly in priority order within each section. Contributions welco
 
 ## Driver
 
-- [ ] Device name follows the configured channel count (currently fixed "(128ch)")
+- [x] Device name follows the configured channel count
 - [ ] Per-channel mute / trim controls exposed as HAL controls
 - [ ] Optional input stream (loopback) so other apps can record what the DAW sends
 - [ ] Settable safety offset / latency reporting

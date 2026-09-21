@@ -31,8 +31,8 @@ Start by checking the real checkout, branch/worktree, and dirty state. Do not as
 | SSD format specification | github.com/daitomanabe/spatial-scene-definition (MIT). `ssd-format` is now a stub that points to it | `[VERIFIED]` 2026-09-20: `docs/format.md` states the rotation order this app already used; the device axis is still not stated in prose but its reference viewer draws FOV at local +Z |
 | App (SwiftUI in an AppKit window) | `VisualizerApp/Sources/VisualizerApp/` (`App.swift` entry and CLI modes, `DriverController.swift`, `AudioLevelsModel.swift`, `SpeakerSceneView.swift`, `RoutingPanel.swift`, `LevelMeterGridView.swift`, `TestSignal*.swift`, `Theme.swift`) | `[VERIFIED]` builds with 0 warnings |
 | Test signal DSP (C, realtime-safe) | `VisualizerApp/Sources/TestSignalDSP/` | `[VERIFIED]` `tsgcheck` passes; measured on the live driver |
-| Version | `VERSION` (`0.3.0`); build number = `git rev-list --count HEAD` | `[VERIFIED]` |
-| Packaging | `build_app.sh`, `packaging/build_pkg.sh`, `packaging/distribution.xml`, `packaging/scripts/driver/`, `packaging/uninstall.sh`, `packaging/icon/` | `[VERIFIED]` universal pkg built for v0.3.0 |
+| Version | `VERSION` (`0.3.1`); build number = `git rev-list --count HEAD` | `[VERIFIED]` |
+| Packaging | `build_app.sh`, `packaging/build_pkg.sh`, `packaging/distribution.xml`, `packaging/scripts/driver/`, `packaging/uninstall.sh`, `packaging/icon/` | `[VERIFIED]` universal pkg built for v0.3.1 |
 | Released artifacts | GitHub Releases `v0.1.0`, `v0.2.0` of daitomanabe/virtual-audio-interface (pkg, `.sha256`, `uninstall.sh`) | `[VERIFIED]` `gh release view v0.2.0` lists the three assets |
 | Roadmap | `TODO.md` | `[VERIFIED]` updated in v0.2.0 |
 
@@ -69,7 +69,6 @@ Start by checking the real checkout, branch/worktree, and dirty state. Do not as
 1. `[IN_PROGRESS]` Roadmap in `TODO.md` — the user has not picked the next item. Candidates the session considered most valuable:
    - Performance: bring CPU well below 10% (publish only changed meter values, skip SwiftUI updates while occluded, lower the 3D update rate when idle) — acceptance: `ps -o %cpu` under 10% with 128 channels playing.
    - Monitor: avoid overlapping labels for nearby speakers and scene objects (visible in the README hero image: the light rows and the room label of `Examples/FIL-v1.sscene`, Top view with Channel + name labels).
-   - Device name should follow the configured channel count (currently fixed "Virtual Audio Interface (128ch)").
 2. `[UNKNOWN]` Manual GUI verification of the NOT_RUN flows above — first check: ask the user to run Driver Update, Test signal "Step through SSD speakers" on `Examples/dome-24.sscene`, and edit/save a `.sscene`.
 
 ## Blockers and Decisions Needed
@@ -124,5 +123,6 @@ Do not treat the conversation summary as a substitute for this document. Do not 
 | --- | --- | --- | --- |
 | `2026-09-18` | `Claude Code` | initial capture after the v0.2.0 release | `make -C Tools check`, `make -C Tools harness`, `gh release view v0.2.0` |
 | `2026-09-21` | `Codex` | v0.3.0 release: Room C, SSD `+Z` axis, and dense-scene label readability | `make -C Tools check`, universal build, pkg checksum |
+| `2026-09-21` | `Codex` | v0.3.1: device name follows the configured channel count; harness asserts initial and reconfigured names | `make -C Tools harness` |
 | `2026-09-18` | `Claude Code` | added `Examples/FIL-v1.sscene` (assumed speaker patch), README screenshots retaken from it, screenshot recipe in `AGENTS.md`; pushed to `origin/main` on the user's request |
 | `2026-09-20` | `Claude Code` | Fable 5.1 review of FIL-v1 applied (pushed); then the device axis corrected to local +Z and `Examples/room-c.sscene` added — **not pushed** | `make -C Tools check`, docshot of room-c and FIL-v1 | `make -C Tools check` → `ssdcheck OK`; docshot PNGs inspected |

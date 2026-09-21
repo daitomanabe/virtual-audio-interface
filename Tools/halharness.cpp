@@ -11,6 +11,7 @@
 #include <sys/mman.h>
 #include <thread>
 #include <vector>
+#include <string>
 #include "../Shared/MeterShm.h"
 
 extern "C" void *VirtualAudioDevicePlugin_Factory(CFAllocatorRef, CFUUIDRef);
@@ -90,6 +91,22 @@ static void QueryAllProperties() {
             }
 }
 
+static std::string DeviceName() {
+    AudioObjectPropertyAddress address = {kAudioObjectPropertyName, kAudioObjectPropertyScopeGlobal,
+                                          kAudioObjectPropertyElementMain};
+    CFStringRef name = nullptr;
+    UInt32 size = 0;
+    assert((*gDrv)->GetPropertyDataSize(gDrv, 2, 0, &address, 0, nullptr, &size) == 0);
+    assert(size == sizeof(CFStringRef));
+    UInt32 got = 0;
+    assert((*gDrv)->GetPropertyData(gDrv, 2, 0, &address, 0, nullptr, size, &got, &name) == 0);
+    assert(name && got == sizeof(CFStringRef));
+    char buffer[128] = {};
+    assert(CFStringGetCString(name, buffer, sizeof(buffer), kCFStringEncodingUTF8));
+    CFRelease(name);
+    return buffer;
+}
+
 int main() {
     gHALQueue = dispatch_queue_create("hal", DISPATCH_QUEUE_SERIAL);
     gDrv = (AudioServerPlugInDriverRef)VirtualAudioDevicePlugin_Factory(nullptr, kAudioServerPlugInTypeUUID);
@@ -97,6 +114,7 @@ int main() {
     AudioServerPlugInHostRef host = &gHost;
     assert((*gDrv)->Initialize(gDrv, host) == 0);
     QueryAllProperties();
+    assert(DeviceName() == "Virtual Audio Interface (128ch)");
     std::puts("properties OK");
 
     int fd = shm_open(VAI_SHM_NAME, O_RDWR, 0);
@@ -156,6 +174,10 @@ int main() {
     assert((*gDrv)->StopIO(gDrv, dev, client.mClientID) == 0);
     (*gDrv)->RemoveDeviceClient(gDrv, dev, &client);
     dispatch_sync(gHALQueue, ^{});
+
+    char expectedName[64];
+    std::snprintf(expectedName, sizeof(expectedName), "Virtual Audio Interface (%uch)", shm->channelCount);
+    assert(DeviceName() == expectedName);
 
     std::printf("io OK: updateCounter=%llu ioBuf=%u ch=%u sr=%.0f clip1=%u propsChanged=%d configRequests=%d\n",
                 shm->updateCounter, shm->ioBufferFrameSize, shm->channelCount, shm->sampleRate, shm->clipCount[0],
