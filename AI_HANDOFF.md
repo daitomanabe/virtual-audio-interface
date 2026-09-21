@@ -2,11 +2,11 @@
 
 > Contract: `portable-agent-handoff/v1`
 > Captured: `2026-09-18T14:15:36+09:00`
-> Scope: `Virtual Audio Interface — 128-channel Core Audio HAL driver plus a SwiftUI app that visualizes levels and SSD (.sscene) speaker layouts for spatial audio debugging; state after the v0.3.0 release.`
+> Scope: `Virtual Audio Interface — 128-channel Core Audio HAL driver plus a SwiftUI app that visualizes levels and SSD (.sscene) speaker layouts for spatial audio debugging; state after the v0.3.1 release.`
 
 ## Status
 
-- Overall: `IN_PROGRESS` — v0.3.0 is released and working on the author's machine; the roadmap in `TODO.md` is open.
+- Overall: `IN_PROGRESS` — v0.3.1 is released and working on the author's machine; the roadmap in `TODO.md` is open.
 - Evidence freshness: `current` as of the capture time; the driver/app evidence below was taken at commit `9435351` (tag `v0.2.0`) and the commits after it are docs, `Examples/FIL-v1.sscene` and screenshots only.
 - Safe continuation: `yes` — the checkout is clean and `main` equals `origin/main` (check `git status -sb`). Anything that restarts `coreaudiod` or publishes needs the user's approval (see Safety Boundaries).
 
@@ -38,11 +38,11 @@ Start by checking the real checkout, branch/worktree, and dirty state. Do not as
 
 ## Current State
 
-- `[VERIFIED]` Release `v0.2.0` = `9435351`; release `v0.3.0` contains the later Room C, SSD `+Z` axis, and dense-label work. The repository is public (MIT).
+- `[VERIFIED]` Release `v0.2.0` = `9435351`; release `v0.3.1` contains the later Room C, SSD `+Z` axis, dense-label work, and dynamic device naming. The repository is public (MIT).
 - `[VERIFIED]` Signal path works end to end on the author's Mac: Ableton Live → driver → shared memory → app. Measured shm update rate ≈ 94/s at 48 kHz / 512 frames (48000 / 512 = 93.75).
 - `[VERIFIED]` The driver runs in coreaudiod's helper process `Core Audio Driver (VirtualAudioInterfaceDriver.driver)`. ON/OFF/Update copies or removes the bundle in `/Library/Audio/Plug-Ins/HAL` and restarts `coreaudiod`; the app compares `VAIDriverSourceHash` (stamped by `HALPlugin/Makefile`) to decide "outdated".
 - `[VERIFIED]` On the author's machine (many third-party audio drivers) `coreaudiod` stayed at ~100% CPU and unresponsive for ~2 min 20 s after the installer restarted it. CoreAudio lookups in the app were moved off the main thread because of this.
-- `[STALE]` The app installed in `/Applications` on the author's machine may be older than v0.3.0. Recheck with `/Applications/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --status` and reinstall from the release if needed.
+- `[STALE]` The app installed in `/Applications` on the author's machine may be older than v0.3.1. Recheck with `/Applications/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --status` and reinstall from the release if needed.
 - `[VERIFIED]` Git history was rewritten once before the first push to remove a vendored private file (`ssd/Scene.h`); it is absent from all published commits. Older commit messages still mention it by name, which the user accepted.
 - `[INFERRED]` CPU use is high for a monitoring utility (~30% visible, ~25% hidden with 128 channels at 60 Hz, Apple silicon); basis: `ps` sampling during the App Nap test. Listed in `TODO.md → Performance`.
 
@@ -54,7 +54,7 @@ Start by checking the real checkout, branch/worktree, and dirty state. Do not as
 - `[VERIFIED]` Checks: `make -C Tools check` → `selfcheck OK`, `ssdcheck OK`, `tsgcheck: OK`, `watchcheck OK`.
 - `[VERIFIED]` Test signal on the live driver: `--test-signal 17 3 sine -20` → ch17 peak 0.1000 (−20.0 dBFS), neighbours 0; three parallel instances on ch1/9/17 at −12 dBFS → 0.2512 each.
 - `[VERIFIED]` App keeps running behind other apps: window hidden for 25 s keeps ~25% CPU (not throttled). `--docshot` captures with its window ordered behind all others (checked with the on-screen window list) and still renders SceneKit.
-- `[VERIFIED]` v0.3.0 pkg: universal app and driver (`lipo -archs` → `x86_64 arm64`), both components non-relocatable, `shasum -a 256 -c` OK; installation was not run because it restarts `coreaudiod`.
+- `[VERIFIED]` v0.3.1 pkg: universal app and driver (`lipo -archs` → `x86_64 arm64`), both components non-relocatable, `shasum -a 256 -c` OK; installation was not run because it restarts `coreaudiod`.
 - `[VERIFIED]` UI is English-only; README screenshots in `docs/images/` were captured from the v0.2.0 build (98) with the driver ON, all from `Examples/FIL-v1.sscene` (recipe in `AGENTS.md`). During the capture the frontmost app did not change and the docshot window was last in the on-screen window list.
 - `[VERIFIED]` `Examples/FIL-v1.sscene` (the user's real-room study) loads with 16 speakers, 35 objects and no warnings; covered by `ssdcheck`.
 - `[INFERRED]` The `[SPEAKER]` rows in `Examples/FIL-v1.sscene` are an assumed patch (NYS slot N → channel N+1, extras → 13–16); the source export had none because the physical channel numbering is unconfirmed. Replace them when the user confirms the patch.
