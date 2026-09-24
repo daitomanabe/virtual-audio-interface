@@ -78,6 +78,7 @@ final class SSDSceneModel: ObservableObject {
 
     private func read(_ path: String, reframe: Bool) {
         self.path = path
+        DebugLog.shared.add("Loading \(URL(fileURLWithPath: path).lastPathComponent)\(reframe ? "" : " (file changed)" )")
         if watcher?.path != path {
             watcher = FileWatcher(path: path) { [weak self] in self?.read(path, reframe: false) }
         }
@@ -96,6 +97,7 @@ final class SSDSceneModel: ObservableObject {
                                                               &errorText, Int32(errorText.count))
         guard count >= 0, objectCount >= 0 else {
             loadError = String(cString: errorText)
+            DebugLog.shared.add("Scene load failed: \(loadError ?? "unknown error")")
             if shownPath != path {
                 speakers = []; objects = []; warnings = []; sceneName = ""; reviewVolume = nil; loadedAt = nil
                 shownPath = nil
@@ -121,6 +123,11 @@ final class SSDSceneModel: ObservableObject {
         shownPath = path
         loadedAt = Date()
         generation += 1
+        DebugLog.shared.add("Scene loaded: \(objects.count) objects, \(speakers.count) mapped speaker rows, \(Set(speakers.filter { $0.active && !$0.mute }.map(\.channel)).count) playable channels, \(warnings.count) warnings")
+        if speakers.isEmpty {
+            DebugLog.shared.add("No [SPEAKER] channel mapping. Step: SSD speakers has no channels; speaker OBJECT rows alone do not define routing.")
+        }
+        for warning in warnings { DebugLog.shared.add("SSD warning: \(warning)") }
     }
 }
 

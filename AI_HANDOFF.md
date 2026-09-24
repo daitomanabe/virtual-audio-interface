@@ -38,6 +38,9 @@ Start by checking the real checkout, branch/worktree, and dirty state. Do not as
 
 ## Current State
 
+- `[VERIFIED 2026-09-24]` The app has a local **Layouts** menu reading `~/Library/Application Support/VirtualAudioInterface/Scenes/` and a **Debug Log** tab for scene loads, SSD step lists, device changes, routing steps and output errors. The four current `spatial-scene-definition/ssd/*.sscene` files were copied there and hash-checked locally. They are private working data and are not committed or bundled.
+- `[VERIFIED 2026-09-24]` The app parser loads those four local layouts: FIL-v1 35 objects/0 SPEAKER rows, Room A 2/0, Room B 61/24 (17 distinct playable channels), Room C 76/0. Thus **Step: SSD speakers** is empty for three layouts by data definition; no channel assignments were inferred. Room B's `[COVERAGE]` is retained with one nonfatal parser warning.
+
 - `[VERIFIED]` Release `v0.2.0` = `9435351`; release `v0.3.1` contains the later Room C, SSD `+Z` axis, dense-label work, and dynamic device naming. The repository is public (MIT).
 - `[VERIFIED]` Signal path works end to end on the author's Mac: Ableton Live → driver → shared memory → app. Measured shm update rate ≈ 94/s at 48 kHz / 512 frames (48000 / 512 = 93.75).
 - `[VERIFIED]` The driver runs in coreaudiod's helper process `Core Audio Driver (VirtualAudioInterfaceDriver.driver)`. ON/OFF/Update copies or removes the bundle in `/Library/Audio/Plug-Ins/HAL` and restarts `coreaudiod`; the app compares `VAIDriverSourceHash` (stamped by `HALPlugin/Makefile`) to decide "outdated".

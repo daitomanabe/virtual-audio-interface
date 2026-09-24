@@ -155,6 +155,7 @@ enum DocShot {
             ("meters", .meters, .top, .number),
             ("meters-layout", .meters, .top, .number),
             ("settings", .settings, .top, .number),
+            ("debug-log", .debug, .top, .number),
         ]
         // LevelMeterGridView reads its All/Layout mode from UserDefaults on init;
         // force it per shot and restore whatever the user had before exiting, so

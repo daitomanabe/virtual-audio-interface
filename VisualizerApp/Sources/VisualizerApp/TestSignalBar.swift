@@ -22,9 +22,13 @@ struct TestSignalBar: View {
         .onAppear {
             engine.selectedChannel = selectedChannel
             engine.speakerChannels = speakerChannels
+            DebugLog.shared.add("SSD step list: \(speakerChannels.isEmpty ? "empty" : speakerChannels.map(String.init).joined(separator: ", "))")
         }
         .onChange(of: selectedChannel) { engine.selectedChannel = $0 }
-        .onChange(of: speakerChannels) { engine.speakerChannels = $0 }
+        .onChange(of: speakerChannels) {
+            engine.speakerChannels = $0
+            DebugLog.shared.add("SSD step list: \($0.isEmpty ? "empty" : $0.map(String.init).joined(separator: ", "))")
+        }
         .onChange(of: engine.currentChannel) { if let channel = $0 { selectedChannel = channel } }
     }
 

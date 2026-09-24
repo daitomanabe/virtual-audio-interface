@@ -1,7 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-enum MainTab: Hashable { case monitor, meters, settings }
+enum MainTab: Hashable { case monitor, meters, settings, debug }
 
 struct ContentView: View {
     /// Not observed here: only the views that show levels/driver state subscribe,
@@ -19,6 +19,7 @@ struct ContentView: View {
     @State private var showObjects = true
     @State private var applyGain = true
     @State private var selectedChannel: Int?
+    @State private var libraryScenes: [URL] = []
     @AppStorage(LevelMeterGridView.modeKey) private var meterMode = MeterMode.all
 
     private static let lastPathKey = "lastScenePath"
@@ -64,6 +65,8 @@ struct ContentView: View {
                     .tabItem { Text("Meters") }.tag(MainTab.meters)
                 SettingsView(model: audioLevels, driver: driver)
                     .tabItem { Text("Settings") }.tag(MainTab.settings)
+                DebugLogView(log: .shared)
+                    .tabItem { Text("Debug Log") }.tag(MainTab.debug)
             }
         }
         .frame(minWidth: 1000, minHeight: 640)
@@ -77,6 +80,7 @@ struct ContentView: View {
             return true
         }
         .onAppear {
+            libraryScenes = LayoutLibrary.scenes()
             // onAppear can fire again (window hide/show); only the first one loads.
             guard sceneModel.path == nil,
                   let path = scenePath ?? UserDefaults.standard.string(forKey: Self.lastPathKey) else { return }
@@ -91,6 +95,18 @@ struct ContentView: View {
             Button("Open…") { openPanel() }
                 .keyboardShortcut("o")
                 .help("Open a .sscene layout (⌘O), or drop one on the window")
+            Menu("Layouts") {
+                if libraryScenes.isEmpty { Text("No local layouts") }
+                ForEach(libraryScenes, id: \.path) { url in
+                    Button(url.deletingPathExtension().lastPathComponent) { open(url.path) }
+                }
+                Divider()
+                Button("Refresh Layouts") { libraryScenes = LayoutLibrary.scenes() }
+                Button("Show Layout Folder") {
+                    try? FileManager.default.createDirectory(at: LayoutLibrary.directory, withIntermediateDirectories: true)
+                    NSWorkspace.shared.open(LayoutLibrary.directory)
+                }
+            }
             Button("Reload") { sceneModel.reload() }
                 .keyboardShortcut("r")
                 .help("Read the file again and re-frame the view (⌘R). Saving the file reloads it automatically.")
@@ -151,6 +167,7 @@ struct ContentView: View {
             case .monitor: monitorControls
             case .meters: meterControls
             case .settings: EmptyView()
+            case .debug: EmptyView()
             }
             Spacer(minLength: Theme.Space.m)
             TestSignalBar(speakers: sceneModel.speakers, selectedChannel: $selectedChannel)

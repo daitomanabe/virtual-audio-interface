@@ -143,6 +143,15 @@ dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal 17 2 p
 
 ## Speaker layouts (SSD / .sscene)
 
+The **Layouts** menu lists `.sscene` files in `~/Library/Application Support/VirtualAudioInterface/Scenes/`.
+Use **Show Layout Folder** to open it, copy local working layouts there, then choose **Refresh Layouts**.
+The menu loads each file through the same parser as **Open…**. Scene files in this folder are local data;
+they are not part of the public repository or packaged app.
+
+The **Debug Log** tab records scene loading, the playable SSD channel list, test-signal routing steps,
+virtual device changes, and output errors. **Copy Log** copies the current session's entries. A speaker
+OBJECT without a `[SPEAKER]` row has no channel assignment and cannot be used by **Step: SSD speakers**.
+
 Layouts use SSD (Spatial Scene Definition) v0.1, a tab-separated text format documented in
 [daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format). Speakers are defined by the
 sections below; the other objects of a scene are drawn for context (see [Scene objects](#scene-objects)).

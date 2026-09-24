@@ -34,7 +34,7 @@ final class TestSignalEngine: ObservableObject {
     @Published var signal = Signal.pink { didSet { pushParameters() } }
     @Published var levelDB = -20.0 { didSet { pushParameters() } }
     @Published var frequency = 1000.0 { didSet { pushParameters() } }
-    @Published var target = Target.selected { didSet { retarget() } }
+    @Published var target = Target.selected { didSet { DebugLog.shared.add("Test signal target: \(target.rawValue)"); retarget() } }
     @Published var dwell = 1.0 { didSet { retarget() } }
     /// The app-wide selection (input for `.selected`).
     var selectedChannel: Int? { didSet { if target == .selected { retarget() } } }
@@ -103,18 +103,26 @@ final class TestSignalEngine: ObservableObject {
 
     func start() {
         guard !playing else { return }
+        DebugLog.shared.add("Test signal start: \(signal.rawValue), \(Int(levelDB)) dBFS, target \(target.rawValue)")
         playing = true
         failure = nil
         // Keeps the step timer on time while the window is hidden (App Nap).
         activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiatedAllowingIdleSystemSleep, .latencyCritical],
                                                          reason: "Test signal output")
         openUnit()
+        if device != nil && unit == nil {
+            playing = false
+            activity.map(ProcessInfo.processInfo.endActivity)
+            activity = nil
+            DebugLog.shared.add("Test signal output did not start: \(failure ?? "output unit unavailable")")
+        }
         retarget()
     }
 
     /// `fade: false` stops at once (window close, app quit, device change).
     func stop(fade: Bool = true) {
         guard playing else { return }
+        DebugLog.shared.add("Test signal stopped")
         playing = false
         failure = nil
         activity.map(ProcessInfo.processInfo.endActivity)
@@ -141,17 +149,20 @@ final class TestSignalEngine: ObservableObject {
         guard playing, n > 0 else {
             currentChannel = nil
             send(TSG_CHANNEL_NONE)
+            if playing { DebugLog.shared.add("Waiting for virtual device") }
             return
         }
         switch target {
         case .all:
             currentChannel = nil
             send(TSG_CHANNEL_ALL)
+            DebugLog.shared.add("Routing to all \(n) channels")
             return
         case .selected:
             currentChannel = selectedChannel.flatMap { (1...n).contains($0) ? $0 : nil }
         case .speakers, .channels:
             let list = stepList(n)
+            DebugLog.shared.add("Step list: \(list.isEmpty ? "empty" : list.map(String.init).joined(separator: ", ")) (device \(n) ch)")
             if !list.contains(currentChannel ?? 0) { currentChannel = list.first }
             if list.count > 1 {
                 let timer = Timer(timeInterval: dwell, repeats: true) { [weak self] _ in
@@ -162,12 +173,14 @@ final class TestSignalEngine: ObservableObject {
             }
         }
         send(currentChannel.map(Int32.init) ?? TSG_CHANNEL_NONE)
+        DebugLog.shared.add(currentChannel.map { "Routing to ch \($0)" } ?? "No valid target channel; output silent")
     }
 
     private func step() {
         let list = stepList(device?.channels ?? 0)
         currentChannel = list.first { $0 > currentChannel ?? 0 } ?? list.first
         send(currentChannel.map(Int32.init) ?? TSG_CHANNEL_NONE)
+        DebugLog.shared.add(currentChannel.map { "Step to ch \($0)" } ?? "Step list empty; output silent")
     }
 
     private func send(_ channel: Int32) {
@@ -201,6 +214,7 @@ final class TestSignalEngine: ObservableObject {
 
     private func apply(_ found: Device?, force: Bool) {
         guard force || found != device else { return }
+        DebugLog.shared.add(found.map { "Virtual device: \($0.channels) ch @ \(Int($0.sampleRate)) Hz" } ?? "Virtual device unavailable")
         if let deviceListener, let listenedDevice {
             for var addr in Self.deviceAddresses {
                 AudioObjectRemovePropertyListenerBlock(listenedDevice, &addr, .main, deviceListener)
@@ -240,7 +254,10 @@ final class TestSignalEngine: ObservableObject {
         var callback = tsgRenderCallback(state)
 
         func ok(_ status: OSStatus, _ what: String) -> Bool {
-            if status != noErr { failure = "Test signal: \(what) failed (OSStatus \(status))" }
+            if status != noErr {
+                failure = "Test signal: \(what) failed (OSStatus \(status))"
+                DebugLog.shared.add(failure!)
+            }
             return status == noErr
         }
         guard let component = AudioComponentFindNext(nil, &desc),
@@ -264,6 +281,7 @@ final class TestSignalEngine: ObservableObject {
             return
         }
         failure = nil
+        DebugLog.shared.add("Audio output unit started")
     }
 
     private func closeUnit(fade: Bool) {
