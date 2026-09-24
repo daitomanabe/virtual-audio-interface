@@ -62,7 +62,7 @@ Ableton Live などからは本物のオーディオインターフェースと�
    一度開いてから **システム設定 → プライバシーとセキュリティ** で、パッケージについての表示の横にある
    **このまま開く** をクリックしてください。ターミナルで隔離属性を外す方法もあります。
    ```bash
-   xattr -d com.apple.quarantine ~/Downloads/VirtualAudioInterface-0.3.1.pkg
+   xattr -d com.apple.quarantine ~/Downloads/VirtualAudioInterface-0.3.2.pkg
    ```
 3. インストーラーを実行します。次の 2 つが入ります。
    - `/Applications/VirtualAudioInterface.app`
@@ -149,6 +149,15 @@ dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal 17 2 p
 ```
 
 ## スピーカー配置(SSD / .sscene)
+
+**Layouts** メニューには `~/Library/Application Support/VirtualAudioInterface/Scenes/` の
+`.sscene` ファイルが表示されます。**Show Layout Folder** でフォルダを開いて配置ファイルをコピーし、
+**Refresh Layouts** で一覧を更新できます。ここに置いたファイルはローカルデータであり、公開リポジトリや
+配布アプリには含まれません。
+
+**Debug Log** タブには、SSD の読み込み、ステップ対象チャンネル、テスト信号の出力先、デバイスの変化と
+出力エラーが表示されます。**Copy Log** で現在のログをコピーできます。`[OBJECT]` にスピーカーがあっても
+`[SPEAKER]` のチャンネル割り当てがなければ **Step: SSD speakers** の対象にはなりません。
 
 配置は SSD(Spatial Scene Definition)v0.1 というタブ区切りテキスト形式で書きます。形式の仕様は
 [daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format) にあります。スピーカーは下の
@@ -313,4 +322,4 @@ packaging/        インストーラー(pkg)のビルド、アンインストー
 
 ## ライセンス
 
-[MIT](LICENSE) © 2026 Daito Manabe
+[MIT](LICENSE) Copyright (c) 2026 Daito Manabe

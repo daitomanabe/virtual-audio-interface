@@ -87,7 +87,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleIdentifier</key><string>com.daitomanabe.virtualaudiointerface.app</string>
     <key>CFBundleExecutable</key><string>VisualizerApp</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
-    <key>NSHumanReadableCopyright</key><string>© 2026 Daito Manabe</string>
+    <key>NSHumanReadableCopyright</key><string>Copyright (c) 2026 Daito Manabe</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
     <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
     <key>LSMinimumSystemVersion</key><string>13.0</string>
