@@ -9,6 +9,9 @@
 #define PINK_UNIT_RMS (1.0f / 1.7631f)
 #define FADE_SECONDS 0.010
 #define TWO_PI 6.283185307179586
+#define PULSE_HZ 4.0
+#define PULSE_DUTY 0.5
+#define PULSE_EDGE_SECONDS 0.002
 
 _Static_assert(ATOMIC_INT_LOCK_FREE == 2, "the render thread must never wait on a lock");
 
@@ -22,6 +25,7 @@ struct TSGState {
     // render thread only
     double sampleRate;
     double phase;
+    double pulsePhase;      // 0..1; reset when the channel or signal changes
     float fadeStep;          // envelope change per sample (0 -> 1 in FADE_SECONDS)
     float gainCoef;          // one-pole smoothing of level changes
     float env;               // 0..1 fade envelope
@@ -97,6 +101,7 @@ static OSStatus render(void *refCon, AudioUnitRenderActionFlags *flags, const Au
                 s->channel = reqChannel;
                 s->signal = reqSignal;
                 s->gain = target;
+                s->pulsePhase = 0;
             }
         } else {
             if (s->env < 1) s->env = fminf(1, s->env + s->fadeStep);
@@ -110,6 +115,19 @@ static OSStatus render(void *refCon, AudioUnitRenderActionFlags *flags, const Au
             if (s->phase >= TWO_PI) s->phase -= TWO_PI;
         } else {
             x = pink(s);
+            if (s->signal == TSG_PINK_PULSE) {
+                // Keep the 50% gate exact. Short ramps fit inside its ON half to avoid clicks.
+                const double phase = s->pulsePhase;
+                const double edge = PULSE_HZ * PULSE_EDGE_SECONDS;
+                float pulse = 0;
+                if (phase < PULSE_DUTY) {
+                    double ramp = fmin(phase / edge, (PULSE_DUTY - phase) / edge);
+                    pulse = (float)fmin(1.0, ramp);
+                }
+                x *= pulse;
+                s->pulsePhase += PULSE_HZ / s->sampleRate;
+                if (s->pulsePhase >= 1.0) s->pulsePhase -= 1.0;
+            }
         }
         x = fmaxf(-1, fminf(1, x * s->gain * s->env));
 

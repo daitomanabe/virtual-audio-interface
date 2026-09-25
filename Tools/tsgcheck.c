@@ -1,5 +1,6 @@
 // Self-check for the app's test signal renderer (VisualizerApp/Sources/TestSignalDSP):
-// channel isolation, sine peak / pink RMS calibration, fades, all-channels, clamping.
+// channel isolation, sine peak / pink RMS calibration, 4 Hz pink pulse, fades,
+// all-channels, clamping.
 #include "test_signal.h"
 #include <assert.h>
 #include <math.h>
@@ -76,6 +77,38 @@ int main(void) {
     printf("pink -20 dBFS ch2: peak %.4f rms %.4f\n", peak[1], rms[1]);
     assert(fabsf(20 * log10f(rms[1]) + 20) < 0.5f);
     for (int c = 0; c < CH; c++) if (c != 1) assert(peak[c] == 0);
+
+    // Two 4 Hz pulse cycles fit into the new minimum 0.5 s channel dwell.
+    // The OFF windows must be silent; ON windows retain the requested pink level.
+    TSGState *pulse = tsgCreate(SR);
+    tsgSetSignal(pulse, TSG_PINK_PULSE);
+    tsgSetLevel(pulse, -20);
+    tsgSetChannel(pulse, 1);
+    double pulseSq[4] = {0};
+    int pulseSamples[4] = {0};
+    for (int b = 0; b < 47; b++) {
+        render(pulse);
+        for (int f = 0; f < FRAMES; f++) {
+            int sample = b * FRAMES + f;
+            int window = -1;
+            if (sample >= SR * 20 / 1000 && sample < SR * 100 / 1000) window = 0;
+            if (sample >= SR * 145 / 1000 && sample < SR * 230 / 1000) window = 1;
+            if (sample >= SR * 270 / 1000 && sample < SR * 350 / 1000) window = 2;
+            if (sample >= SR * 395 / 1000 && sample < SR * 480 / 1000) window = 3;
+            if (window >= 0) {
+                pulseSq[window] += (double)buf[0][f] * buf[0][f];
+                pulseSamples[window]++;
+            }
+            for (int c = 1; c < CH; c++) assert(buf[c][f] == 0);
+        }
+    }
+    float on1 = (float)sqrt(pulseSq[0] / pulseSamples[0]);
+    float on2 = (float)sqrt(pulseSq[2] / pulseSamples[2]);
+    printf("pink pulse 4 Hz: on RMS %.4f / %.4f, off RMS %.4f / %.4f\n", on1, on2,
+           sqrt(pulseSq[1] / pulseSamples[1]), sqrt(pulseSq[3] / pulseSamples[3]));
+    assert(on1 > 0.05f && on1 < 0.15f && on2 > 0.05f && on2 < 0.15f);
+    assert(pulseSq[1] == 0 && pulseSq[3] == 0);
+    tsgDestroy(pulse);
 
     // All channels at once get the same signal.
     tsgSetChannel(s, TSG_CHANNEL_ALL);

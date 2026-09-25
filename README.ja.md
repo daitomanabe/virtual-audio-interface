@@ -33,7 +33,7 @@ Ableton Live などからは本物のオーディオインターフェースと�
   ファイルを保存すると自動で読み直します。
 - **ルーティング検証**: 未割当チャンネルへの信号、デバイスのチャンネル数を超えるスピーカー、
   Mute / 無効なスピーカーへの信号、複数スピーカーでのチャンネル共有、パーサー警告。
-- **テスト信号**: ピンクノイズまたはサイン波を選択したCore Audio出力デバイス1台へ送ります。選択中のチャンネル、配置のスピーカーを
+- **テスト信号**: 連続／パルスのピンクノイズまたはサイン波を選択したCore Audio出力デバイス1台へ送ります。選択中のチャンネル、配置のスピーカーを
   順に、全チャンネルを順に選べるので、DAW なしで出力先を確認できます
   ([テスト信号](#テスト信号) を参照)。
 - **ホストが決める値の表示**: IO バッファサイズ、動作状態、クライアント数、DAW が要求したサンプルレート。
@@ -137,21 +137,21 @@ Soundcardや他のCore Audio出力も選べます。アプリは入力音声を�
 選択はデバイスUIDで保存します。デバイス切断や形式変更時は停止し、別デバイスへの自動切替や自動再生は行いません。
 外部出力を選ぶとレベルを最大-40 dBFSに下げます。その後は手動で変更できます。
 
-- **信号**: ピンクノイズ、または 63 Hz〜8 kHz のサイン波。**レベル**: -60〜0 dBFS(サイン波はピーク、
-  ピンクノイズは RMS)。
+- **信号**: 連続ピンクノイズ、ピンクノイズのパルス（4 Hz、duty 0.5：125 ms ON / 125 ms OFF）、
+  または 63 Hz〜8 kHz のサイン波。**レベル**: -60〜0 dBFS(サイン波はピーク、ピンクノイズはON区間のRMS)。
 - **出力先**:
   - **Selected channel**: 3D 表示、スピーカー一覧、メーターで選択中のチャンネル
   - **Step through SSD speakers**: 配置の有効で Mute でないスピーカーのチャンネルを順に
   - **Step through all channels**: デバイスのチャンネル 1〜N を順に
   - **All channels at once**: 仮想デバイスのみ、全チャンネル同時
-- **Dwell**(順に鳴らすとき): 1 チャンネルあたり 0.25〜5 秒。鳴っているチャンネルに選択が移るので、
+- **Dwell**(順に鳴らすとき): 1 チャンネルあたり 0.5〜5 秒。鳴っているチャンネルに選択が移るので、
   3D 表示、一覧、メーターが追従します。
 
 止めたとき、ウィンドウを閉じたとき、アプリを終了したときに停止します。ウィンドウなしでターミナルからも
 鳴らせます。
 
 ```bash
-dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal <channel> <seconds> [pink|sine] [dBFS]
+dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal <channel> <seconds> [pink|pink-pulse|sine] [dBFS]
 # 例: ch17 にピンクノイズを -20 dBFS で 2 秒(sine は 1 kHz)
 dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal 17 2 pink -20
 dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --list-test-outputs  # 出力デバイス一覧、音声は出さない
@@ -297,7 +297,7 @@ make -C Tools harness          # coreaudiod と同じ呼び出しでプラグイ
 - `dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --status` でドライバの状態を表示します。
 - `... --docshot <dir> [scene.sscene] [--appearance light|dark] [--size WxH]` で全タブを PNG に書き出します
   (上のスクリーンショットもこれで撮影。ウィンドウは `--size` の指定がなければ 1400×900 pt)。
-- `... --test-signal <channel> <seconds> [pink|sine] [dBFS]` でウィンドウなしで[テスト信号](#テスト信号)を鳴らします。
+- `... --test-signal <channel> <seconds> [pink|pink-pulse|sine] [dBFS]` でウィンドウなしで[テスト信号](#テスト信号)を鳴らします。
 - `swift packaging/icon/make_icon.swift` でアプリアイコン(`packaging/icon/AppIcon.icns`)を描き直します。
 - `Tools/fake_meter [sweep|sine|clip]` は DAW なしで合成レベルを書き込みます。ドライバと同じ共有メモリを
   使うので、ドライバが OFF のときだけ使ってください。

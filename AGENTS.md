@@ -14,7 +14,7 @@ swift build --package-path VisualizerApp
 ```
 
 Headless app modes (no window in front): `VisualizerApp --status`, `--docshot <dir> [scene.sscene] [--appearance light|dark] [--size WxH]`,
-`--test-signal <channel> <seconds> [pink|sine] [dBFS]`. Look at docshot PNGs before claiming a UI change works.
+`--test-signal <channel> <seconds> [pink|pink-pulse|sine] [dBFS]`. Look at docshot PNGs before claiming a UI change works.
 
 README screenshots (`docs/images/`): run the bundled app (a bare `swift build` binary shows "Version ? (?)") with
 `--docshot <dir> "$PWD/Examples/FIL-v1.sscene" --appearance dark --size 1400x848`, then `sips --resampleWidth 1600`.

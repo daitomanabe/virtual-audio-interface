@@ -15,6 +15,7 @@ typedef struct TSGState TSGState;
 
 static const int32_t TSG_PINK = 0;
 static const int32_t TSG_SINE = 1;
+static const int32_t TSG_PINK_PULSE = 2;
 static const int32_t TSG_CHANNEL_NONE = -1;
 static const int32_t TSG_CHANNEL_ALL = 0;
 
@@ -27,7 +28,9 @@ void tsgDestroy(TSGState *s);
 // or the signal fades out, switches, and fades back in (10 ms each way).
 void tsgSetChannel(TSGState *s, int32_t channel);
 void tsgSetSignal(TSGState *s, int32_t signal);
-// Sine: peak level. Pink noise: RMS level. Output is clamped to +-1.
+// Sine: peak level. Pink noise (including each pulse's ON interval): RMS level.
+// Pink pulse is 4 Hz, 50% duty (125 ms ON / 125 ms OFF).
+// Output is clamped to +-1.
 void tsgSetLevel(TSGState *s, float dBFS);
 void tsgSetFrequency(TSGState *s, float hz);
 

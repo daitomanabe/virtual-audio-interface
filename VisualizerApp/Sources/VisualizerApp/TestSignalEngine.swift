@@ -29,7 +29,7 @@ struct TestSignalPreview: Equatable {
 @MainActor
 final class TestSignalEngine: ObservableObject {
     enum Signal: String, CaseIterable, Identifiable {
-        case pink = "Pink noise", sine = "Sine"
+        case pink = "Pink noise", pinkPulse = "Pink noise pulse", sine = "Sine"
         var id: Self { self }
     }
 
@@ -231,7 +231,7 @@ final class TestSignalEngine: ObservableObject {
             DebugLog.shared.add("Step list: \(list.isEmpty ? "empty" : list.map(String.init).joined(separator: ", ")) (device \(n) ch)")
             if !list.contains(currentChannel ?? 0) { currentChannel = list.first }
             if list.count > 1 {
-                let timer = Timer(timeInterval: dwell, repeats: true) { [weak self] _ in
+                let timer = Timer(timeInterval: max(0.5, dwell), repeats: true) { [weak self] _ in
                     Task { @MainActor in self?.step() }
                 }
                 RunLoop.main.add(timer, forMode: .common) // keep stepping while a control is being dragged
@@ -255,7 +255,13 @@ final class TestSignalEngine: ObservableObject {
 
     private func pushParameters() {
         guard let state else { return }
-        tsgSetSignal(state, signal == .sine ? TSG_SINE : TSG_PINK)
+        let kind: Int32
+        switch signal {
+        case .pink: kind = TSG_PINK
+        case .pinkPulse: kind = TSG_PINK_PULSE
+        case .sine: kind = TSG_SINE
+        }
+        tsgSetSignal(state, kind)
         tsgSetLevel(state, Float(levelDB))
         tsgSetFrequency(state, Float(frequency))
     }
@@ -455,17 +461,21 @@ extension TestSignalEngine {
         fatalError("Main run loop exited before device enumeration")
     }
 
-    /// `VisualizerApp --test-signal <channel> <seconds> [pink|sine] [dBFS]`: plays without a window, then exits.
+    /// `VisualizerApp --test-signal <channel> <seconds> [pink|pink-pulse|sine] [dBFS]`.
     static func runCLI(_ args: [String]) -> Never {
-        let usage = "usage: VisualizerApp --test-signal <channel> <seconds> [pink|sine] [dBFS (-60...0, default -20)]"
+        let usage = "usage: VisualizerApp --test-signal <channel> <seconds> [pink|pink-pulse|sine] [dBFS (-60...0, default -20)]"
         guard args.count >= 2, let channel = Int(args[0]), channel >= 1, let seconds = Double(args[1]), seconds > 0,
-              args.count < 3 || ["pink", "sine"].contains(args[2]),
+              args.count < 3 || ["pink", "pink-pulse", "sine"].contains(args[2]),
               args.count < 4 || Double(args[3]).map({ (-60...0).contains($0) }) == true else {
             print(usage)
             exit(2)
         }
         let engine = TestSignalEngine(restoreOutputSelection: false)
-        engine.signal = args.count > 2 && args[2] == "sine" ? .sine : .pink
+        switch args.count > 2 ? args[2] : "pink" {
+        case "pink-pulse": engine.signal = .pinkPulse
+        case "sine": engine.signal = .sine
+        default: engine.signal = .pink
+        }
         engine.levelDB = args.count > 3 ? Double(args[3])! : -20
         engine.selectedChannel = channel
         let lookupDeadline = Date().addingTimeInterval(15) // the device lookup is asynchronous; coreaudiod may be busy

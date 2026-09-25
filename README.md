@@ -32,7 +32,7 @@ the sounding speakers lit up, and warnings for routing mistakes.
   The file reloads automatically when you save it.
 - **Routing checks** — signal on an unassigned channel, speakers beyond the device's channel count,
   signal on muted or disabled speakers, channels shared by several speakers, parser warnings.
-- **Test signal** — pink noise or a sine into one selected Core Audio output device, including the virtual
+- **Test signal** — continuous or pulsed pink noise, or a sine into one selected Core Audio output device, including the virtual
   device or a separate interface. It can use the selected channel or step through channels without a DAW
   (see [Test signal](#test-signal)).
 - **Host-decided values** — IO buffer size, running state, client count and the sample rate the DAW asked
@@ -135,19 +135,20 @@ does not automatically resume or fall back to another output. Selecting an exter
 level to at most −40 dBFS; you can then set it deliberately. All channels at once is limited to the virtual
 device.
 
-- **Signal**: pink noise, or a sine at 63 Hz – 8 kHz. **Level**: −60 to 0 dBFS (sine: peak, pink noise: RMS).
+- **Signal**: continuous pink noise, pink noise pulse (4 Hz, 50% duty: 125 ms ON / 125 ms OFF),
+  or a sine at 63 Hz – 8 kHz. **Level**: −60 to 0 dBFS (sine: peak, pink noise: RMS during ON).
 - **Target**:
   - **Selected channel** — the channel selected in the 3D view, the speaker table or the meters.
   - **Step through SSD speakers** — each channel of the layout's enabled, unmuted speakers in turn.
   - **Step through all channels** — channels 1 … N of the device in turn.
   - **All channels at once** — virtual device only.
-- **Dwell** (while stepping): 0.25–5 s per channel. Stepping moves the selection along, so the 3D view,
+- **Dwell** (while stepping): 0.5–5 s per channel. Stepping moves the selection along, so the 3D view,
   the table and the meters follow the channel that is playing.
 
 It stops when you stop it, close the window or quit. From Terminal, without a window:
 
 ```bash
-dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal <channel> <seconds> [pink|sine] [dBFS]
+dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal <channel> <seconds> [pink|pink-pulse|sine] [dBFS]
 # e.g. 2 s of pink noise on channel 17 at -20 dBFS (sine is 1 kHz)
 dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal 17 2 pink -20
 dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --list-test-outputs  # read-only device inventory
@@ -293,7 +294,7 @@ make -C Tools harness          # drives the plug-in like coreaudiod under ASan/U
 - `dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --status` prints the driver state.
 - `... --docshot <dir> [scene.sscene] [--appearance light|dark] [--size WxH]` renders every tab to PNG
   (used for the screenshots above; the window is 1400×900 pt unless `--size` says otherwise).
-- `... --test-signal <channel> <seconds> [pink|sine] [dBFS]` plays the [test signal](#test-signal) without a window.
+- `... --test-signal <channel> <seconds> [pink|pink-pulse|sine] [dBFS]` plays the [test signal](#test-signal) without a window.
 - `swift packaging/icon/make_icon.swift` redraws the app icon (`packaging/icon/AppIcon.icns`).
 - `Tools/fake_meter [sweep|sine|clip]` writes synthetic levels without a DAW. It uses the same shared memory
   as the driver, so run it only while the driver is OFF.

@@ -35,12 +35,18 @@ struct TestSignalBar: View {
         Set(speakers.filter { !$0.silent }.map(\.channel)).sorted()
     }
 
-    /// Pink noise, or sine at one of the frequencies, in one menu (0 = pink noise).
+    /// Noise modes use negative tags; positive tags select a sine frequency.
     private var signal: Binding<Double> {
-        Binding(get: { engine.signal == .pink ? 0 : engine.frequency },
+        Binding(get: {
+                    switch engine.signal {
+                    case .pink: return 0
+                    case .pinkPulse: return -1
+                    case .sine: return engine.frequency
+                    }
+                },
                 set: { value in
                     if value > 0 { engine.frequency = value }
-                    engine.signal = value > 0 ? .sine : .pink
+                    engine.signal = value > 0 ? .sine : (value < 0 ? .pinkPulse : .pink)
                 })
     }
 
@@ -76,19 +82,21 @@ struct TestSignalBar: View {
         Menu {
             Picker("Signal", selection: signal) {
                 Text("Pink noise").tag(0.0)
+                Text("Pink noise pulse · 4 Hz").tag(-1.0)
                 Divider()
                 ForEach(TestSignalEngine.frequencies, id: \.self) { Text("Sine \(Self.hz($0))").tag($0) }
             }
             .pickerStyle(.inline)
             .labelsHidden()
         } label: {
-            Text(engine.signal == .pink ? "Pink noise" : "Sine \(Self.hz(engine.frequency))")
+            Text(engine.signal == .pink ? "Pink noise" :
+                 engine.signal == .pinkPulse ? "Pink pulse" : "Sine \(Self.hz(engine.frequency))")
         }
         .frame(width: 96)
-        .help("Signal")
+        .help(engine.signal == .pinkPulse ? "Pink noise pulse: 4 Hz, 50% duty" : "Signal")
         Slider(value: $engine.levelDB, in: -60...0, step: 1)
             .frame(width: 72)
-            .help("Level. Sine: peak. Pink noise: RMS.")
+            .help("Level. Sine: peak. Pink noise: RMS during the ON interval.")
         Text("\(Int(engine.levelDB)) dBFS")
             .font(Theme.Fonts.number)
             .frame(width: 54, alignment: .leading)
@@ -107,7 +115,7 @@ struct TestSignalBar: View {
         .frame(width: 136) // fixed, so the controls after it do not move when the target changes
         .help("Where the signal goes: \(engine.target.rawValue)")
         if engine.target.steps {
-            Stepper(value: $engine.dwell, in: 0.25...5, step: 0.25) {
+            Stepper(value: $engine.dwell, in: 0.5...5, step: 0.25) {
                 Text("\(String(format: "%g", engine.dwell)) s").font(Theme.Fonts.number)
             }
             .help("Time on each channel while stepping")
