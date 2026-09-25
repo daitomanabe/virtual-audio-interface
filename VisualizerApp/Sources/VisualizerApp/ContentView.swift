@@ -177,7 +177,8 @@ struct ContentView: View {
             case .debug: EmptyView()
             }
             Spacer(minLength: Theme.Space.m)
-            TestSignalBar(speakers: sceneModel.speakers, selectedChannel: $selectedChannel, engine: testSignal)
+            TestSignalBar(speakers: sceneModel.speakers, selectedChannel: $selectedChannel, engine: testSignal,
+                          longStatusPreview: docshot && CommandLine.arguments.contains("--long-status-preview"))
                 .layoutPriority(1)   // its full width before the spacer; only the status text truncates
         }
         .controlSize(.small)

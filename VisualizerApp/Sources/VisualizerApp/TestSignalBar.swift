@@ -6,6 +6,10 @@ struct TestSignalBar: View {
     let speakers: [Speaker]
     @Binding var selectedChannel: Int?
     @ObservedObject var engine: TestSignalEngine
+    let longStatusPreview: Bool
+
+    private static let maxStatusNameCharacters = 8
+    private static let statusWidth: CGFloat = 120
 
     var body: some View {
         HStack(spacing: Theme.Space.s) {
@@ -13,8 +17,8 @@ struct TestSignalBar: View {
             status
                 .font(Theme.Fonts.body)
                 .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(minWidth: 40, alignment: .leading)
+                .truncationMode(.tail)
+                .frame(width: Self.statusWidth, alignment: .leading)
         }
         .background(WindowCloseHook { engine.stop(fade: false) })
         .onAppear {
@@ -51,6 +55,24 @@ struct TestSignalBar: View {
     }
 
     private static func hz(_ f: Double) -> String { f < 1000 ? "\(Int(f)) Hz" : "\(Int(f / 1000)) kHz" }
+
+    /// Show one bounded speaker name; keep the complete list in the status tooltip.
+    private static func shortStatusName(_ names: [String]) -> String {
+        guard let first = names.first else { return "no speaker" }
+        let extra = names.count > 1 ? " +\(names.count - 1)" : ""
+        let budget = max(1, maxStatusNameCharacters - extra.count)
+        let name = first.count > budget ? String(first.prefix(budget - 1)) + "…" : first
+        return name + extra
+    }
+
+    private func channelStatus(_ channel: Int, names: [String], external: Bool, deviceName: String) -> some View {
+        let fullNames = names.isEmpty ? "no speaker" : names.joined(separator: ", ")
+        let route = external ? "Generated signal sent to \(deviceName); virtual meters do not measure this output"
+                             : "Signal sent to the virtual device and visible in Meters"
+        return Text("\(external ? "Send" : "Ch") \(channel) · \(Self.shortStatusName(names))")
+            .fontWeight(.semibold)
+            .help("\(fullNames)\n\(route)")
+    }
 
     @ViewBuilder
     private var controls: some View {
@@ -124,20 +146,21 @@ struct TestSignalBar: View {
 
     @ViewBuilder
     private var status: some View {
-        if let failure = engine.failure {
+        if longStatusPreview {
+            // Docshot fixture: exercise the long-name layout without starting an output device.
+            channelStatus(18, names: ["SP-C-long-speaker-name-ch18-with-many-extra-characters"],
+                          external: true, deviceName: "Test output fixture")
+        } else if let failure = engine.failure {
             Text(failure).foregroundStyle(Color(nsColor: Theme.error)).help(failure)
         } else if let device = engine.device {
             if !engine.playing {
-                EmptyView()
+                Text(" ").hidden() // reserve the same width before and during playback
             } else if engine.target == .all {
                 Text("All \(device.channels) channels").fontWeight(.semibold)
             } else if let channel = engine.currentChannel {
-                let names = speakers.filter { $0.channel == channel }.map(\.name).joined(separator: ", ")
+                let names = speakers.filter { $0.channel == channel }.map(\.name)
                 let external = engine.selectedDeviceUID != DriverController.deviceUID
-                Text("\(external ? "Sending ch" : "Ch") \(channel) · \(names.isEmpty ? "no speaker" : names)")
-                    .fontWeight(.semibold)
-                    .help(external ? "Generated signal sent to \(device.name); virtual meters do not measure this output"
-                                   : "Signal sent to the virtual device and visible in Meters")
+                channelStatus(channel, names: names, external: external, deviceName: device.name)
             } else if engine.target == .selected, let selected = selectedChannel {
                 Text("Ch \(selected) is beyond the device's \(device.channels) channels")
                     .foregroundStyle(Color(nsColor: Theme.warning))
