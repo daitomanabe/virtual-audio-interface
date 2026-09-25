@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// Test signal controls on the right of the second top-bar row, on every tab. Plays into the virtual
-/// device so the Monitor and Meters tabs can be checked without a DAW; stepping moves the app-wide
-/// selection along.
+/// Test signal controls on every tab. One selected Core Audio output receives the generated signal;
+/// stepping moves the app-wide channel selection along.
 struct TestSignalBar: View {
     let speakers: [Speaker]
     @Binding var selectedChannel: Int?
@@ -11,7 +10,6 @@ struct TestSignalBar: View {
     var body: some View {
         HStack(spacing: Theme.Space.s) {
             controls
-                .disabled(engine.device == nil && !engine.playing)
             status
                 .font(Theme.Fonts.body)
                 .lineLimit(1)
@@ -55,7 +53,26 @@ struct TestSignalBar: View {
         }
         .toggleStyle(.button)
         .fixedSize()
-        .help("Play a test signal into the virtual device (mixed with any DAW output)")
+        .disabled(engine.device == nil && !engine.playing)
+        .help("Generate a test signal on the selected output device")
+        Menu {
+            Picker("Output device", selection: $engine.selectedDeviceUID) {
+                if engine.availableDevices.isEmpty { Text("No output devices").disabled(true) }
+                ForEach(engine.availableDevices, id: \.uid) { output in
+                    Text("\(output.name) (\(output.channels) ch)").tag(output.uid)
+                }
+                if engine.device == nil, !engine.selectedDeviceUID.isEmpty {
+                    Text("Selected device unavailable").tag(engine.selectedDeviceUID)
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            Text(engine.device?.name ?? "Output unavailable")
+                .lineLimit(1).truncationMode(.middle)
+        }
+        .frame(width: 155)
+        .help(engine.device.map { "Test output: \($0.name) [\($0.uid)], \($0.channels) ch @ \(Int($0.sampleRate)) Hz" }
+              ?? "Selected test output is unavailable; choose another device")
         Menu {
             Picker("Signal", selection: signal) {
                 Text("Pink noise").tag(0.0)
@@ -77,7 +94,10 @@ struct TestSignalBar: View {
             .frame(width: 54, alignment: .leading)
         Menu {
             Picker("Target", selection: $engine.target) {
-                ForEach(TestSignalEngine.Target.allCases) { Text($0.rawValue).tag($0) }
+                ForEach(TestSignalEngine.Target.allCases) { target in
+                    Text(target.rawValue).tag(target)
+                        .disabled(target == .all && engine.selectedDeviceUID != DriverController.deviceUID)
+                }
             }
             .pickerStyle(.inline)
             .labelsHidden()
@@ -105,7 +125,11 @@ struct TestSignalBar: View {
                 Text("All \(device.channels) channels").fontWeight(.semibold)
             } else if let channel = engine.currentChannel {
                 let names = speakers.filter { $0.channel == channel }.map(\.name).joined(separator: ", ")
-                Text("Ch \(channel) · \(names.isEmpty ? "no speaker" : names)").fontWeight(.semibold)
+                let external = engine.selectedDeviceUID != DriverController.deviceUID
+                Text("\(external ? "Sending ch" : "Ch") \(channel) · \(names.isEmpty ? "no speaker" : names)")
+                    .fontWeight(.semibold)
+                    .help(external ? "Generated signal sent to \(device.name); virtual meters do not measure this output"
+                                   : "Signal sent to the virtual device and visible in Meters")
             } else if engine.target == .selected, let selected = selectedChannel {
                 Text("Ch \(selected) is beyond the device's \(device.channels) channels")
                     .foregroundStyle(Color(nsColor: Theme.warning))
@@ -114,9 +138,9 @@ struct TestSignalBar: View {
                     .foregroundStyle(.secondary)
             }
         } else {
-            Text(engine.playing ? "Waiting for the device…" : "No virtual device")
+            Text("Output unavailable")
                 .foregroundStyle(Color(nsColor: Theme.warning))
-                .help("The test signal needs the virtual device: turn the driver on.")
+                .help("Choose an available output device. The virtual output requires its driver to be on.")
         }
     }
 }

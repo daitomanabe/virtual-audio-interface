@@ -32,9 +32,9 @@ the sounding speakers lit up, and warnings for routing mistakes.
   The file reloads automatically when you save it.
 - **Routing checks** — signal on an unassigned channel, speakers beyond the device's channel count,
   signal on muted or disabled speakers, channels shared by several speakers, parser warnings.
-- **Test signal** — pink noise or a sine into the virtual device, on the selected channel, stepping through
-  the layout's speakers or all channels, or on all channels at once, so the whole chain can be checked
-  without a DAW (see [Test signal](#test-signal)).
+- **Test signal** — pink noise or a sine into one selected Core Audio output device, including the virtual
+  device or a separate interface. It can use the selected channel or step through channels without a DAW
+  (see [Test signal](#test-signal)).
 - **Host-decided values** — IO buffer size, running state, client count and the sample rate the DAW asked
   for, so you can see what the host actually negotiated.
 - **Driver ON / OFF / Update** from the driver menu at the top right, with verification that the driver
@@ -120,16 +120,22 @@ height. Click a meter to select that channel everywhere.
 
 ## Test signal
 
-The test signal plays into the virtual device from the app itself (mixed with anything your DAW sends), so
-the Monitor and Meters tabs, the routing checks and your speaker layout can be checked without a DAW. It
-needs the driver ON.
+Choose one **Output device** for the app's generated test signal. The default is Virtual Audio Interface;
+there it mixes with DAW output and appears in Monitor and Meters, and requires the driver ON. You can
+instead select Dante Virtual Soundcard or another available Core Audio output. The app sends directly to
+that device and does not capture or pass through any input audio. Virtual device meters do not measure
+signals sent to another output; the "Sending ch" label shows the generator's target, not confirmed reception.
+The selection is saved by device UID. If the device disappears or its format changes, playback stops and
+does not automatically resume or fall back to another output. Selecting an external output reduces the
+level to at most −40 dBFS; you can then set it deliberately. All channels at once is limited to the virtual
+device.
 
 - **Signal**: pink noise, or a sine at 63 Hz – 8 kHz. **Level**: −60 to 0 dBFS (sine: peak, pink noise: RMS).
 - **Target**:
   - **Selected channel** — the channel selected in the 3D view, the speaker table or the meters.
   - **Step through SSD speakers** — each channel of the layout's enabled, unmuted speakers in turn.
   - **Step through all channels** — channels 1 … N of the device in turn.
-  - **All channels at once**.
+  - **All channels at once** — virtual device only.
 - **Dwell** (while stepping): 0.25–5 s per channel. Stepping moves the selection along, so the 3D view,
   the table and the meters follow the channel that is playing.
 
@@ -139,7 +145,10 @@ It stops when you stop it, close the window or quit. From Terminal, without a wi
 dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal <channel> <seconds> [pink|sine] [dBFS]
 # e.g. 2 s of pink noise on channel 17 at -20 dBFS (sine is 1 kHz)
 dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal 17 2 pink -20
+dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --list-test-outputs  # read-only device inventory
 ```
+
+The CLI test signal always targets Virtual Audio Interface, regardless of the saved GUI selection.
 
 ## Speaker layouts (SSD / .sscene)
 
@@ -149,7 +158,7 @@ The menu loads each file through the same parser as **Open…**. Scene files in 
 they are not part of the public repository or packaged app.
 
 The **Debug Log** tab records scene loading, the playable SSD channel list, test-signal routing steps,
-virtual device changes, and output errors. **Copy Log** copies the current session's entries. A speaker
+selected output device changes, and output errors. **Copy Log** copies the current session's entries. A speaker
 OBJECT without a `[SPEAKER]` row has no channel assignment and cannot be used by **Step: SSD speakers**.
 
 Layouts use SSD (Spatial Scene Definition) v0.1, a tab-separated text format documented in

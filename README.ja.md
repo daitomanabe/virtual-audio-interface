@@ -33,8 +33,8 @@ Ableton Live などからは本物のオーディオインターフェースと�
   ファイルを保存すると自動で読み直します。
 - **ルーティング検証**: 未割当チャンネルへの信号、デバイスのチャンネル数を超えるスピーカー、
   Mute / 無効なスピーカーへの信号、複数スピーカーでのチャンネル共有、パーサー警告。
-- **テスト信号**: ピンクノイズまたはサイン波を仮想デバイスに出します。選択中のチャンネル、配置のスピーカーを
-  順に、全チャンネルを順に、全チャンネル同時、から選べるので、DAW なしで経路全体を確認できます
+- **テスト信号**: ピンクノイズまたはサイン波を選択したCore Audio出力デバイス1台へ送ります。選択中のチャンネル、配置のスピーカーを
+  順に、全チャンネルを順に選べるので、DAW なしで出力先を確認できます
   ([テスト信号](#テスト信号) を参照)。
 - **ホストが決める値の表示**: IO バッファサイズ、動作状態、クライアント数、DAW が要求したサンプルレート。
   ホストと実際に何が取り決められたかを確認できます。
@@ -126,8 +126,12 @@ Apply SSD gain、ラベル]、Meters: All channels / Layout と Reset Clips)と�
 
 ## テスト信号
 
-テスト信号はアプリ自身が仮想デバイスに出力します(DAW の出力とはミックスされます)。DAW なしで Monitor /
-Meters タブ、ルーティング検証、スピーカー配置を確認できます。ドライバが ON のときに使えます。
+**Output device** でTest信号の出力先を1台選びます。既定はVirtual Audio Interfaceで、その場合はDAWの出力と
+ミックスされ、Monitor / Metersに表示されます。仮想ドライバがONである必要があります。Dante Virtual
+Soundcardや他のCore Audio出力も選べます。アプリは入力音声を取り込まず、転送もしません。外部出力を選んだ
+場合、仮想デバイスのメーターにはTest信号は表示されません。「Sending ch」は送信先の表示であり、受信確認ではありません。
+選択はデバイスUIDで保存します。デバイス切断や形式変更時は停止し、別デバイスへの自動切替や自動再生は行いません。
+外部出力を選ぶとレベルを最大-40 dBFSに下げます。その後は手動で変更できます。
 
 - **信号**: ピンクノイズ、または 63 Hz〜8 kHz のサイン波。**レベル**: -60〜0 dBFS(サイン波はピーク、
   ピンクノイズは RMS)。
@@ -135,7 +139,7 @@ Meters タブ、ルーティング検証、スピーカー配置を確認でき�
   - **Selected channel**: 3D 表示、スピーカー一覧、メーターで選択中のチャンネル
   - **Step through SSD speakers**: 配置の有効で Mute でないスピーカーのチャンネルを順に
   - **Step through all channels**: デバイスのチャンネル 1〜N を順に
-  - **All channels at once**: 全チャンネル同時
+  - **All channels at once**: 仮想デバイスのみ、全チャンネル同時
 - **Dwell**(順に鳴らすとき): 1 チャンネルあたり 0.25〜5 秒。鳴っているチャンネルに選択が移るので、
   3D 表示、一覧、メーターが追従します。
 
@@ -146,7 +150,10 @@ Meters タブ、ルーティング検証、スピーカー配置を確認でき�
 dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal <channel> <seconds> [pink|sine] [dBFS]
 # 例: ch17 にピンクノイズを -20 dBFS で 2 秒(sine は 1 kHz)
 dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --test-signal 17 2 pink -20
+dist/VirtualAudioInterface.app/Contents/MacOS/VisualizerApp --list-test-outputs  # 出力デバイス一覧、音声は出さない
 ```
+
+CLIのTest信号はGUIで保存した選択に関係なく、Virtual Audio Interfaceへ出力します。
 
 ## スピーカー配置(SSD / .sscene)
 

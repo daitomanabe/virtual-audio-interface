@@ -22,6 +22,7 @@ Planned work, roughly in priority order within each section. Contributions welco
 ## Testing and debugging features
 
 - [x] Built-in test signal generator: pink noise or sine, selected channel / step through SSD speakers or all channels / all at once, `--test-signal` CLI
+- [x] Select one Core Audio device for the built-in test signal; stop on output changes, no input capture or automatic fallback
 - [ ] Pass-through to a real audio interface so you can listen while visualizing
 - [ ] Energy/velocity vector (rE / rV) display to check panning and localization
 - [ ] Record and replay meter sessions for offline debugging
