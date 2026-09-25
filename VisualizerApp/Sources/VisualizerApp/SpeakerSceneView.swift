@@ -18,6 +18,7 @@ struct SpeakerSceneView: NSViewRepresentable {
     @ObservedObject var sceneModel: SSDSceneModel
     let audio: AudioLevelsModel      // read by the timer, deliberately not observed
     let levelOverride: [Float]?      // --docshot synthetic levels
+    let testPreview: TestSignalPreview? // commanded external test output, not a received meter level
     @Binding var selectedChannel: Int?
     let camera: CameraPreset
     let showLines: Bool
@@ -367,14 +368,15 @@ struct SpeakerSceneView: NSViewRepresentable {
 
         @objc func tick() {
             guard let props else { return }
-            let levels = props.levelOverride ?? props.audio.levels
+            let measured = props.levelOverride ?? props.audio.levels
+            let levels = props.testPreview?.combining(measured) ?? measured
             for (i, n) in nodes.enumerated() {
                 let db = n.speaker.db(levels, applyGain: props.applyGain)
                 let lineOn = props.showLines && !n.speaker.silent && db > LevelThreshold.line
                 if abs(db - lastDb[i]) < 0.25 && n.line.isHidden == !lineOn { continue }
                 lastDb[i] = db
 
-                let color = levelColor(db)
+                let color = props.testPreview?.channel == n.speaker.channel ? Theme.accent : levelColor(db)
                 if n.speaker.silent {
                     // Muted or disabled: never lit or grown, whatever arrives on the channel. Signal that
                     // arrives anyway tints it with the warning color, like its routing warning.

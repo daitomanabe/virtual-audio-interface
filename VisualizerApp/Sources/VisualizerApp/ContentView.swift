@@ -12,6 +12,7 @@ struct ContentView: View {
     let docshot: Bool
 
     @StateObject private var sceneModel = SSDSceneModel()
+    @StateObject private var testSignal = TestSignalEngine()
     @State private var tab: MainTab
     @State private var camera: CameraPreset
     @State private var labelMode: LabelMode
@@ -38,7 +39,10 @@ struct ContentView: View {
     }
 
     var body: some View {
-        let levelOverride = docshot ? DocShot.syntheticLevels(for: sceneModel.speakers) : nil
+        let preview = docshot && CommandLine.arguments.contains("--test-preview")
+            ? TestSignalPreview(channel: 1, levelDB: -20, deviceName: "Test output fixture", deviceChannels: 64)
+            : testSignal.preview
+        let levelOverride = docshot && preview == nil ? DocShot.syntheticLevels(for: sceneModel.speakers) : nil
         VStack(spacing: 0) {
             fileBar
             Divider()
@@ -47,12 +51,14 @@ struct ContentView: View {
             TabView(selection: $tab) {
                 HSplitView {
                     SpeakerSceneView(sceneModel: sceneModel, audio: audioLevels, levelOverride: levelOverride,
+                                     testPreview: preview,
                                      selectedChannel: $selectedChannel, camera: camera,
                                      showLines: showLines, labelMode: labelMode,
                                      showObjects: showObjects, applyGain: applyGain)
                         .overlay(alignment: .topLeading) { SceneLoadStatus(sceneModel: sceneModel) }
                         .frame(minWidth: 360, maxWidth: .infinity)
                     RoutingPanel(sceneModel: sceneModel, audio: audioLevels, levelOverride: levelOverride,
+                                 testPreview: preview,
                                  selectedChannel: $selectedChannel, applyGain: applyGain)
                         .frame(minWidth: 520, idealWidth: 660, maxWidth: 900)
                 }
@@ -61,6 +67,7 @@ struct ContentView: View {
                     model: audioLevels,
                     speakers: sceneModel.speakers,
                     levelOverride: levelOverride,
+                    testPreview: preview,
                     selectedChannel: $selectedChannel)
                     .tabItem { Text("Meters") }.tag(MainTab.meters)
                 SettingsView(model: audioLevels, driver: driver)
@@ -170,7 +177,7 @@ struct ContentView: View {
             case .debug: EmptyView()
             }
             Spacer(minLength: Theme.Space.m)
-            TestSignalBar(speakers: sceneModel.speakers, selectedChannel: $selectedChannel)
+            TestSignalBar(speakers: sceneModel.speakers, selectedChannel: $selectedChannel, engine: testSignal)
                 .layoutPriority(1)   // its full width before the spacer; only the status text truncates
         }
         .controlSize(.small)

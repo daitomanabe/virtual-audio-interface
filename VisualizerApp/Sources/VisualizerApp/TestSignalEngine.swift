@@ -3,6 +3,25 @@ import AudioToolbox
 import CoreAudio
 import TestSignalDSP
 
+/// UI indication of a generated signal sent to an external output. This is the requested level,
+/// not a measurement from the destination device or the virtual driver's shared memory.
+struct TestSignalPreview: Equatable {
+    let channel: Int
+    let levelDB: Float
+    let deviceName: String
+    let deviceChannels: Int
+
+    var linearLevel: Float { powf(10, levelDB / 20) }
+
+    func combining(_ measured: [Float]) -> [Float] {
+        var result = measured
+        if result.indices.contains(channel - 1) {
+            result[channel - 1] = max(result[channel - 1], linearLevel)
+        }
+        return result
+    }
+}
+
 /// Plays a generated test signal into exactly one selected Core Audio output device via AUHAL.
 /// There is no audio input, pass-through, or second output path that could form a software feedback loop.
 /// Rendering happens in C (TestSignalDSP/test_signal.c); this class only sets parameters, owns the unit,
@@ -64,6 +83,13 @@ final class TestSignalEngine: ObservableObject {
     /// The single channel being played; nil when silent or playing all channels.
     @Published private(set) var currentChannel: Int?
     @Published private(set) var failure: String?
+
+    var preview: TestSignalPreview? {
+        guard playing, unit != nil, selectedDeviceUID != DriverController.deviceUID,
+              let device, let currentChannel else { return nil }
+        return TestSignalPreview(channel: currentChannel, levelDB: Float(levelDB),
+                                 deviceName: device.name, deviceChannels: device.channels)
+    }
 
     private var unit: AudioUnit?
     private var state: OpaquePointer?          // TSGState *, owned together with `unit`

@@ -16,6 +16,7 @@ struct LevelMeterGridView: View {
     @ObservedObject var model: AudioLevelsModel
     var speakers: [Speaker]
     var levelOverride: [Float]?      // --docshot synthetic levels
+    var testPreview: TestSignalPreview? // commanded external output, shown separately from measured meters
     var selectedChannel: Binding<Int?>
 
     /// Set by the picker in the top bar (ContentView) and by DocShot.
@@ -110,25 +111,39 @@ struct LevelMeterGridView: View {
         if !unassigned.isEmpty {
             result.append(Group(header: "Unassigned with signal", detail: "", channels: unassigned, isError: true))
         }
+        if let ch = testPreview?.channel,
+           !speakers.contains(where: { $0.channel == ch }), !unassigned.contains(ch) {
+            result.append(Group(header: "Unassigned TEST output", detail: "", channels: [ch]))
+        }
         return result
     }
 
     var body: some View {
-        GeometryReader { geo in
-            if mode == .layout && speakers.isEmpty {
-                emptyLayout.frame(width: geo.size.width, height: geo.size.height)
-            } else {
-                let plan = plan(for: geo.size)
-                ScrollView(.vertical) {
-                    Canvas { context, _ in draw(context: context, plan: plan) }
-                        .frame(width: geo.size.width, height: plan.height)
-                        .gesture(SpatialTapGesture().onEnded { value in
-                            if let hit = plan.meters.first(where: { $0.rect.contains(value.location) }) {
-                                selectedChannel.wrappedValue = hit.channel
-                            }
-                        })
+        VStack(spacing: 0) {
+            if let testPreview {
+                Label("TEST preview: ch \(testPreview.channel) → \(testPreview.deviceName); target level, not measured here",
+                      systemImage: "waveform")
+                    .font(Theme.Fonts.caption)
+                    .foregroundStyle(Color(nsColor: Theme.accent))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs)
+            }
+            GeometryReader { geo in
+                if mode == .layout && speakers.isEmpty && testPreview == nil {
+                    emptyLayout.frame(width: geo.size.width, height: geo.size.height)
+                } else {
+                    let plan = plan(for: geo.size)
+                    ScrollView(.vertical) {
+                        Canvas { context, _ in draw(context: context, plan: plan) }
+                            .frame(width: geo.size.width, height: plan.height)
+                            .gesture(SpatialTapGesture().onEnded { value in
+                                if let hit = plan.meters.first(where: { $0.rect.contains(value.location) }) {
+                                    selectedChannel.wrappedValue = hit.channel
+                                }
+                            })
+                    }
+                    .overlay(alignment: .bottomLeading) { signalNotice }
                 }
-                .overlay(alignment: .bottomLeading) { signalNotice }
             }
         }
         .background(Color(nsColor: Theme.canvas))
@@ -149,7 +164,9 @@ struct LevelMeterGridView: View {
     @ViewBuilder
     private var signalNotice: some View {
         let silence = !(1...AudioLevelsModel.channelCount).contains { levels(for: $0).peak > AudioLevelsModel.signalThresholdDB }
-        if levelOverride == nil && !model.status.available {
+        if testPreview != nil {
+            EmptyView()
+        } else if levelOverride == nil && !model.status.available {
             notice("Driver not connected: no levels", systemImage: "exclamationmark.triangle.fill", color: Theme.warning)
         } else if silence {
             notice("No signal on any channel", systemImage: "speaker.slash", color: Theme.canvasTextDim)
@@ -243,7 +260,8 @@ struct LevelMeterGridView: View {
                 + Text(group.detail).foregroundColor(Color(nsColor: Theme.canvasTextDim))
             context.draw(title.font(.system(size: Self.headerFont.pointSize, weight: .semibold)), at: CGPoint(x: at.x + 2, y: at.y + 4), anchor: .topLeading)
         }
-        let activeCount = model.status.available ? Int(model.status.channelCount) : AudioLevelsModel.channelCount
+        let activeCount = testPreview?.deviceChannels
+            ?? (model.status.available ? Int(model.status.channelCount) : AudioLevelsModel.channelCount)
         let badges = silentBadges, labels = labels, assigned = assigned
         for (ch, rect) in plan.meters {
             drawMeter(context: context, rect: rect, channel: ch, isActive: ch <= activeCount,
@@ -274,6 +292,7 @@ struct LevelMeterGridView: View {
         var layer = context
         let cell = rect.insetBy(dx: 2, dy: 2)
         let lv = levels(for: ch)
+        let previewDB = testPreview?.channel == ch ? testPreview?.levelDB : nil
         let hasSignal = lv.peak > AudioLevelsModel.signalThresholdDB
         let isUnassigned = isActive && hasSignal && assigned.map { !$0.contains(ch) } == true
         let warn = badge != nil && hasSignal
@@ -318,6 +337,15 @@ struct LevelMeterGridView: View {
                                width: barRect.width * 0.3, height: barRect.maxY - y(forDB: lv.peak))),
                    with: .color(color(lv.peak)))
 
+        // Blue bar = commanded external test level. The green/yellow/red bars remain measured input.
+        if let previewDB {
+            let top = y(forDB: previewDB)
+            let height = max(2, barRect.maxY - top)
+            layer.fill(Path(CGRect(x: barRect.minX + barRect.width * 0.1, y: barRect.maxY - height,
+                                   width: barRect.width * 0.8, height: height)),
+                       with: .color(Color(nsColor: Theme.accent).opacity(0.55)))
+        }
+
         // Hold: thin horizontal line.
         if lv.hold > Self.dbMin {
             let hy = y(forDB: lv.hold)
@@ -332,8 +360,10 @@ struct LevelMeterGridView: View {
         let labelY = barRect.maxY + 3
         layer.draw(Text("\(ch)").font(Theme.Fonts.meterChannel).foregroundColor(Color(nsColor: Theme.canvasText)),
                    at: CGPoint(x: cell.midX, y: labelY), anchor: .top)
-        let dbText = lv.peak <= AudioLevelsModel.dbFloor ? "-\u{221E}" : String(format: "%.0f", lv.peak)
-        layer.draw(Text(dbText).font(Theme.Fonts.meterValue).foregroundColor(Color(nsColor: Theme.canvasTextDim)),
+        let dbText = previewDB.map { String(format: "%.0f*", $0) }
+            ?? (lv.peak <= AudioLevelsModel.dbFloor ? "-\u{221E}" : String(format: "%.0f", lv.peak))
+        layer.draw(Text(dbText).font(Theme.Fonts.meterValue)
+            .foregroundColor(Color(nsColor: previewDB == nil ? Theme.canvasTextDim : Theme.accent)),
                    at: CGPoint(x: cell.midX, y: labelY + 12), anchor: .top)
         if let label {
             let maxChars = max(3, Int(cell.width / 6))

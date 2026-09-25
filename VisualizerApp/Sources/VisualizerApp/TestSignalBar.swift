@@ -5,7 +5,7 @@ import SwiftUI
 struct TestSignalBar: View {
     let speakers: [Speaker]
     @Binding var selectedChannel: Int?
-    @StateObject private var engine = TestSignalEngine()
+    @ObservedObject var engine: TestSignalEngine
 
     var body: some View {
         HStack(spacing: Theme.Space.s) {

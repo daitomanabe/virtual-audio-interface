@@ -124,7 +124,12 @@ Choose one **Output device** for the app's generated test signal. The default is
 there it mixes with DAW output and appears in Monitor and Meters, and requires the driver ON. You can
 instead select Dante Virtual Soundcard or another available Core Audio output. The app sends directly to
 that device and does not capture or pass through any input audio. Virtual device meters do not measure
-signals sent to another output; the "Sending ch" label shows the generator's target, not confirmed reception.
+signals sent to another output. While an external test signal is playing, Meters shows its requested
+channel and level as a blue **TEST preview**, and Monitor lights the matching SSD speaker in blue. The
+speaker table uses the same requested level. These indications show what the app is sending, not confirmed
+reception; the measured virtual-device meter bars and routing warnings remain separate. A layout without a
+`[SPEAKER]` assignment still shows the test channel in Meters → Layout, with an unassigned label. A blue
+meter value ending in `*` is the requested TEST level.
 The selection is saved by device UID. If the device disappears or its format changes, playback stops and
 does not automatically resume or fall back to another output. Selecting an external output reduces the
 level to at most −40 dBFS; you can then set it deliberately. All channels at once is limited to the virtual

@@ -69,6 +69,7 @@ struct RoutingPanel: View {
     @ObservedObject var sceneModel: SSDSceneModel
     let audio: AudioLevelsModel
     let levelOverride: [Float]?
+    let testPreview: TestSignalPreview?
     @Binding var selectedChannel: Int?
     let applyGain: Bool              // level bars and "sounding" use input + SSD Gain, like the 3D view
     @State private var soundingOnly = false
@@ -76,7 +77,19 @@ struct RoutingPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             if sceneModel.loadedAt != nil { sceneInfo }
-            LiveIssues(sceneModel: sceneModel, audio: audio, levelOverride: levelOverride, selectedChannel: $selectedChannel)
+            if let testPreview {
+                Label("TEST preview: ch \(testPreview.channel) → \(testPreview.deviceName), \(Int(testPreview.levelDB)) dBFS target; not measured at the output",
+                      systemImage: "waveform")
+                    .font(Theme.Fonts.caption)
+                    .foregroundStyle(Color(nsColor: Theme.accent))
+                if !sceneModel.speakers.contains(where: { $0.channel == testPreview.channel }) {
+                    Text("TEST ch \(testPreview.channel) has no [SPEAKER] assignment in this layout")
+                        .font(Theme.Fonts.caption)
+                        .foregroundStyle(Color(nsColor: Theme.warning))
+                }
+            }
+            LiveIssues(sceneModel: sceneModel, audio: audio, levelOverride: levelOverride,
+                       testPreviewActive: testPreview != nil, selectedChannel: $selectedChannel)
             Divider()
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                 Text("Speakers").font(Theme.Fonts.heading)
@@ -91,10 +104,12 @@ struct RoutingPanel: View {
                             : sceneModel.loadedAt == nil ? "The layout could not be loaded" : "The layout has no speakers")
             } else if soundingOnly {
                 SoundingSpeakerTable(sceneModel: sceneModel, audio: audio, levelOverride: levelOverride,
+                                     testPreview: testPreview,
                                      selectedChannel: $selectedChannel, applyGain: applyGain)
             } else {
                 SpeakerTable(rows: sceneModel.speakers, all: sceneModel.speakers, audio: audio,
-                             levelOverride: levelOverride, selectedChannel: $selectedChannel, applyGain: applyGain)
+                             levelOverride: levelOverride, testPreview: testPreview,
+                             selectedChannel: $selectedChannel, applyGain: applyGain)
             }
         }
         .padding(Theme.Space.m)
@@ -134,6 +149,7 @@ private struct LiveIssues: View {
     @ObservedObject var sceneModel: SSDSceneModel
     @ObservedObject var audio: AudioLevelsModel
     let levelOverride: [Float]?
+    let testPreviewActive: Bool
     @Binding var selectedChannel: Int?
 
     private static let rowHeight: CGFloat = 20
@@ -161,7 +177,8 @@ private struct LiveIssues: View {
                     .font(Theme.Fonts.caption).foregroundStyle(Color(nsColor: Theme.warning))
             }
             if issues.isEmpty {
-                Label("No routing problems", systemImage: "checkmark.circle.fill")
+                Label(testPreviewActive ? "No measured routing problems" : "No routing problems",
+                      systemImage: "checkmark.circle.fill")
                     .font(Theme.Fonts.body)
                     .foregroundStyle(.secondary)
                     .frame(height: Self.rowHeight)
@@ -205,15 +222,18 @@ private struct SoundingSpeakerTable: View {
     @ObservedObject var sceneModel: SSDSceneModel
     @ObservedObject var audio: AudioLevelsModel
     let levelOverride: [Float]?
+    let testPreview: TestSignalPreview?
     @Binding var selectedChannel: Int?
     let applyGain: Bool
 
     var body: some View {
-        let levels = levelOverride ?? audio.levels
+        let measured = levelOverride ?? audio.levels
+        let levels = testPreview?.combining(measured) ?? measured
         let rows = sceneModel.speakers.filter {
             $0.db(levels, applyGain: applyGain) > LevelThreshold.signal && !(applyGain && $0.silent)
         }
         SpeakerTable(rows: rows, all: sceneModel.speakers, audio: audio, levelOverride: levelOverride,
+                     testPreview: testPreview,
                      selectedChannel: $selectedChannel, applyGain: applyGain)
             .overlay { if rows.isEmpty { placeholder("No speaker is sounding") } }
     }
@@ -224,6 +244,7 @@ private struct SpeakerTable: View {
     let all: [Speaker]
     let audio: AudioLevelsModel
     let levelOverride: [Float]?
+    let testPreview: TestSignalPreview?
     @Binding var selectedChannel: Int?
     let applyGain: Bool
 
@@ -243,10 +264,12 @@ private struct SpeakerTable: View {
             TableColumn("Name") { Text($0.name).foregroundStyle($0.silent ? .secondary : .primary) }
                 .width(min: 40, ideal: 56)
             TableColumn("Level dBFS") {
-                LevelCell(audio: audio, levelOverride: levelOverride, speaker: $0, postGain: false, showsBar: !applyGain)
+                LevelCell(audio: audio, levelOverride: levelOverride, testPreview: testPreview,
+                          speaker: $0, postGain: false, showsBar: !applyGain)
             }.width(84)
             TableColumn("Post-gain") {
-                LevelCell(audio: audio, levelOverride: levelOverride, speaker: $0, postGain: true, showsBar: applyGain)
+                LevelCell(audio: audio, levelOverride: levelOverride, testPreview: testPreview,
+                          speaker: $0, postGain: true, showsBar: applyGain)
             }.width(84)
             TableColumn("Gain dB") { number(String(format: "%.1f", $0.gainDb), dim: $0.gainDb == 0) }.width(52)
             TableColumn("Delay ms") { number(String(format: "%.1f", $0.delayMs), dim: $0.delayMs == 0) }.width(56)
@@ -277,25 +300,30 @@ private struct SpeakerTable: View {
 private struct LevelCell: View {
     @ObservedObject var audio: AudioLevelsModel
     let levelOverride: [Float]?
+    let testPreview: TestSignalPreview?
     let speaker: Speaker
     let postGain: Bool
     let showsBar: Bool
 
     var body: some View {
-        let levels = levelOverride ?? audio.levels
-        let db = speaker.db(levels, applyGain: postGain)
+        let measured = levelOverride ?? audio.levels
+        let previewing = testPreview?.channel == speaker.channel
+        let inputDB = previewing ? testPreview!.levelDB : channelDb(measured, speaker.channel)
+        let db = inputDB + (postGain ? Float(speaker.gainDb) : 0)
         HStack(spacing: Theme.Space.xs + 2) {
             if postGain && speaker.silent {
                 Text(speaker.mute ? "Muted" : "Off").font(Theme.Fonts.caption).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
             } else {
-                Text(channelDb(levels, speaker.channel) <= -120 ? "-\u{221E}" : String(format: "%.1f", db))
+                Text(inputDB <= -120 ? "-\u{221E}" : String(format: "%.1f", db))
                     .font(Theme.Fonts.smallNumber)
-                    .foregroundStyle(db > LevelThreshold.signal ? Color.primary : Color.secondary)
+                    .foregroundStyle(previewing ? Color(nsColor: Theme.accent)
+                                     : db > LevelThreshold.signal ? Color.primary : Color.secondary)
                     .frame(width: 36, alignment: .trailing)
                 ZStack(alignment: .leading) {
                     Rectangle().fill(Color.secondary.opacity(0.2))
-                    Rectangle().fill(Color(nsColor: levelColor(db))).frame(width: 36 * levelAmount(db))
+                    Rectangle().fill(Color(nsColor: previewing ? Theme.accent : levelColor(db)))
+                        .frame(width: 36 * levelAmount(db))
                 }
                 .frame(width: 36, height: 7)
                 .opacity(showsBar ? 1 : 0)
