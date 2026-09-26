@@ -167,9 +167,9 @@ The **Debug Log** tab records scene loading, the playable SSD channel list, test
 selected output device changes, and output errors. **Copy Log** copies the current session's entries. A speaker
 OBJECT without a `[SPEAKER]` row has no channel assignment and cannot be used by **Step: SSD speakers**.
 
-Layouts use SSD (Spatial Scene Definition) v0.1, a tab-separated text format documented in
-[daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format). Speakers are defined by the
-sections below; the other objects of a scene are drawn for context (see [Scene objects](#scene-objects)).
+Layouts use SSD (Spatial Scene Definition) v0.1 or v0.3, a tab-separated text format. The example
+below uses v0.1. Speakers are defined by these sections; the other objects of a scene are drawn for
+context (see [Scene objects](#scene-objects)).
 
 ```text
 [SCENE]
@@ -189,6 +189,15 @@ AngleUnit	degree
 1	1	0	0	0
 2	2	0	0	0
 ```
+
+For v0.3, set `Version` to `0.3`. A scene with assigned Dante outputs also has one five-column
+`[AUDIO_CHANNEL_MAP]` row per `[SPEAKER]`: `ObjectID`, `LogicalChannel`, `AudioInterface`,
+`AudioInterfaceChannel`, `Status`. The app accepts `DANTE_TRANSMIT` with `USER_CONFIRMED` or
+`PROVISIONAL` status. The map uses exact speaker OBJECT IDs; multiple speakers may share an output.
+The current meters and test signal use one channel number, so the logical channel, interface channel,
+and `[SPEAKER].Channel` must match. A different mapping produces a load error instead of routing a
+test signal to the wrong channel. A v0.3 scene with no `[SPEAKER]` assignments may omit the map;
+it has no channels for **Step through SSD speakers**.
 
 - Right-handed, **+X right, +Y front, +Z up**, meters and degrees.
 - `Parent` refers to another OBJECT (or `none`). World transform = parent × T(X,Y,Z) × Ry(Roll) · Rx(Pitch) · Rz(Yaw).

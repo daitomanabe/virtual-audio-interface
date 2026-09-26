@@ -170,9 +170,9 @@ CLIのTest信号はGUIで保存した選択に関係なく、Virtual Audio Inter
 出力エラーが表示されます。**Copy Log** で現在のログをコピーできます。`[OBJECT]` にスピーカーがあっても
 `[SPEAKER]` のチャンネル割り当てがなければ **Step: SSD speakers** の対象にはなりません。
 
-配置は SSD(Spatial Scene Definition)v0.1 というタブ区切りテキスト形式で書きます。形式の仕様は
-[daitomanabe/ssd-format](https://github.com/daitomanabe/ssd-format) にあります。スピーカーは下の
-セクションで定義します。シーンのそれ以外の要素も参考として描きます([シーンの要素](#シーンの要素) を参照)。
+配置は SSD(Spatial Scene Definition)v0.1 または v0.3 のタブ区切りテキスト形式で書きます。
+下の例は v0.1 です。スピーカーはこのセクションで定義します。シーンのそれ以外の要素も
+参考として描きます([シーンの要素](#シーンの要素) を参照)。
 
 ```text
 [SCENE]
@@ -192,6 +192,15 @@ AngleUnit	degree
 1	1	0	0	0
 2	2	0	0	0
 ```
+
+v0.3 では `Version` を `0.3` にします。Dante 出力の割り当てがある場合、各 `[SPEAKER]` に対して
+5 列の `[AUDIO_CHANNEL_MAP]` 行を 1 行ずつ指定します。列は `ObjectID`、`LogicalChannel`、
+`AudioInterface`、`AudioInterfaceChannel`、`Status` です。アプリは `DANTE_TRANSMIT` と
+`USER_CONFIRMED`／`PROVISIONAL` を読み込みます。ObjectID はスピーカーの正確な ID を使い、
+複数のスピーカーで同じ出力を共有できます。現在のメーターとテスト信号は単一のチャンネル番号を使うため、
+論理チャンネル、インターフェースチャンネル、`[SPEAKER].Channel` が一致する配置に対応します。
+番号が異なる場合は誤ったチャンネルへテスト信号を送らないよう読み込みエラーにします。音声割り当ての
+ない v0.3 配置ではマップを省略でき、**Step through SSD speakers** の対象はありません。
 
 - 右手系で、**+X が右、+Y が前、+Z が上**。単位はメートルと度です。
 - `Parent` には別の OBJECT(または `none`)を指定します。ワールド変換は

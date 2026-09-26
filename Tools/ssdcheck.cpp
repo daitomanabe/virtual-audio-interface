@@ -73,6 +73,33 @@ static void readerChecks() {
     expectError(kHead + "[OBJECT]\n1\ttruss\ta\tnone\t0\t0\t0\t0\t0\t0\t1\n[SPEAKER]\n1\t1\t0\t0\t0\n",
                 "line 9:"); // SPEAKER on a non-speaker OBJECT
     expectError("[SCENE]\nVersion\t0.2\n", "line 2:");
+
+    const std::string v03 = "[SCENE]\nVersion\t0.3\nUnit\tmeter\nCoordinateSystem\tSSD_RH_ZUP\n"
+                            "AngleUnit\tdegree\nSpeakerChannelMeaning\tDANTE_TRANSMIT_CHANNEL\n";
+    const std::string speakers = "[OBJECT]\na\tspeaker\tA\tnone\t0\t0\t0\t0\t0\t0\t1\n"
+                                 "b\tspeaker\tB\tnone\t1\t0\t0\t0\t0\t0\t1\n"
+                                 "[SPEAKER]\na\t1\t0\t0\t0\nb\t1\t0\t0\t0\n";
+    const std::string mapHead = "[AUDIO_CHANNEL_MAP]\n";
+    const std::string mapA = "a\t1\tDANTE_TRANSMIT\t1\tUSER_CONFIRMED\n";
+    const std::string mapB = "b\t1\tDANTE_TRANSMIT\t1\tPROVISIONAL\n";
+    scene = ssdreader::parse(v03 + speakers + mapHead + mapA + mapB);
+    assert(scene.speakers.size() == 2 && scene.speakers[0].channel == 1 && scene.speakers[1].channel == 1);
+    assert(scene.warnings.size() == 1 && scene.warnings[0] == "1 provisional audio channel mappings");
+    scene = ssdreader::parse(v03 + "[OBJECT]\nx\tspeaker\tX\tnone\t0\t0\t0\t0\t0\t0\t1\n");
+    assert(scene.speakers.empty() && scene.warnings.empty()); // FIL-style spatial layout, no assigned channels
+    expectError(v03 + speakers, "[AUDIO_CHANNEL_MAP] is required");
+    expectError(v03 + speakers + mapHead + mapA, "missing SPEAKER b");
+    expectError(v03 + speakers + mapHead + mapA + mapA, "duplicate AUDIO_CHANNEL_MAP ObjectID");
+    expectError(v03 + speakers + mapHead + "x\t1\tDANTE_TRANSMIT\t1\tUSER_CONFIRMED\n" + mapB,
+                "must reference a SPEAKER row");
+    expectError(v03 + speakers + mapHead + "a\t1\tDANTE_TRANSMIT\t2\tUSER_CONFIRMED\n" + mapB,
+                "SPEAKER Channel differs");
+    expectError(v03 + speakers + mapHead + "a\t2\tDANTE_TRANSMIT\t1\tUSER_CONFIRMED\n" + mapB,
+                "non-identity audio channel mapping");
+    expectError(v03 + speakers + mapHead + "a\t1\tDANTE_TRANSMIT\t1\n", "needs 5 tab-separated fields");
+    expectError(v03 + speakers + mapHead + "a\t1\tOTHER\t1\tUSER_CONFIRMED\n" + mapB,
+                "unsupported AudioInterface");
+    expectError(kHead + speakers + mapHead + mapA + mapB, "requires Version 0.3");
 }
 
 static SSDBObjectInfo objects[SSDB_MAX_OBJECTS];

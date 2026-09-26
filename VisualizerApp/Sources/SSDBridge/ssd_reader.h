@@ -1,4 +1,4 @@
-// SSD (Spatial Scene Definition) v0.1 reader written for this repository (MIT License, see LICENSE).
+// SSD (Spatial Scene Definition) v0.1/v0.3 reader written for this repository (MIT License, see LICENSE).
 // Covers what the Monitor tab reads (SCENE, OBJECT world poses, SPEAKER, REVIEW_VOLUME) plus the
 // format's mandatory checks. Header-only C++17, standard library only, internal to SSDBridge.
 #pragma once
@@ -184,7 +184,7 @@ inline Scene parse(std::string_view text) {
         {"PIXELMAP", 8},   {"CAMERA", 5},     {"MICROPHONE", 3}, {"SENSOR", 2},
         {"TRACKER", 3},    {"LIGHT", 4},      {"ROBOT", 3},      {"EVIDENCE", 6},
         {"BOX", 4},        {"FOV", 5},        {"DEVICE", 3},     {"VISUAL_REQUIREMENT", 4},
-        {"INVENTORY", 6},  {"SHARED_INVENTORY", 4},
+        {"INVENTORY", 6},  {"SHARED_INVENTORY", 4}, {"AUDIO_CHANNEL_MAP", 5},
         {"REVIEW_VOLUME", 1}, {"UNRESOLVED", 1}, // free-form context: never blocks loading
     };
     Scene scene;
@@ -227,14 +227,17 @@ inline Scene parse(std::string_view text) {
     }
 
     static const std::pair<const char *, const char *> required[] = {
-        {"Version", "0.1"}, {"Unit", "meter"}, {"CoordinateSystem", "SSD_RH_ZUP"}, {"AngleUnit", "degree"}};
+        {"Unit", "meter"}, {"CoordinateSystem", "SSD_RH_ZUP"}, {"AngleUnit", "degree"}};
     for (const Row &r : scene.sections["SCENE"]) {
         if (!scene.properties.emplace(r.cells[0], r.cells[1]).second)
             fail(r.line, "duplicate [SCENE] key " + r.cells[0]);
+        if (r.cells[0] == "Version" && r.cells[1] != "0.1" && r.cells[1] != "0.3")
+            fail(r.line, "Version must be 0.1 or 0.3, got '" + r.cells[1] + "'");
         for (auto [key, value] : required)
             if (r.cells[0] == key && r.cells[1] != value)
                 fail(r.line, std::string(key) + " must be " + value + ", got '" + r.cells[1] + "'");
     }
+    if (!scene.properties.count("Version")) throw Error("[SCENE] is missing required key Version");
     for (auto [key, value] : required)
         if (!scene.properties.count(key)) throw Error(std::string("[SCENE] is missing required key ") + key);
 
@@ -261,6 +264,48 @@ inline Scene parse(std::string_view text) {
         Speaker s{id, integer(r, 1, "Channel", 1), number(r, 2, "Gain"), number(r, 3, "Delay"), flag(r, 4, "Mute")};
         if (s.delayMs < 0) fail(r.line, "Delay must be >= 0, got '" + r.cells[3] + "'");
         scene.speakers.push_back(std::move(s));
+    }
+    const auto &audioMap = scene.sections["AUDIO_CHANNEL_MAP"];
+    if (scene.properties.at("Version") == "0.1" && !audioMap.empty())
+        fail(audioMap.front().line, "[AUDIO_CHANNEL_MAP] requires Version 0.3");
+    const auto meaning = scene.properties.find("SpeakerChannelMeaning");
+    const bool danteChannels = meaning != scene.properties.end() && meaning->second == "DANTE_TRANSMIT_CHANNEL";
+    if (danteChannels && !scene.speakers.empty() && audioMap.empty())
+        throw Error("[AUDIO_CHANNEL_MAP] is required for DANTE_TRANSMIT_CHANNEL speakers");
+    if (!audioMap.empty()) {
+        std::map<std::string, int32_t> speakerChannels;
+        for (const Speaker &speaker : scene.speakers) speakerChannels.emplace(speaker.id, speaker.channel);
+        std::set<std::string> mappedIds;
+        std::map<int32_t, int32_t> logicalDestinations;
+        int provisional = 0;
+        for (const Row &r : audioMap) {
+            const std::string &id = r.cells[0];
+            if (!mappedIds.insert(id).second) fail(r.line, "duplicate AUDIO_CHANNEL_MAP ObjectID " + id);
+            const auto speaker = speakerChannels.find(id);
+            if (speaker == speakerChannels.end())
+                fail(r.line, "AUDIO_CHANNEL_MAP ObjectID " + id + " must reference a SPEAKER row");
+            const int32_t logical = integer(r, 1, "LogicalChannel", 1);
+            if (r.cells[2] != "DANTE_TRANSMIT")
+                fail(r.line, "unsupported AudioInterface '" + r.cells[2] + "'");
+            const int32_t output = integer(r, 3, "AudioInterfaceChannel", 1);
+            if (r.cells[4] != "USER_CONFIRMED" && r.cells[4] != "PROVISIONAL")
+                fail(r.line, "Status must be USER_CONFIRMED or PROVISIONAL, got '" + r.cells[4] + "'");
+            provisional += r.cells[4] == "PROVISIONAL";
+            if (danteChannels && speaker->second != output)
+                fail(r.line, "SPEAKER Channel differs from AUDIO_CHANNEL_MAP AudioInterfaceChannel for " + id);
+            auto destination = logicalDestinations.emplace(logical, output);
+            if (!destination.second && destination.first->second != output)
+                fail(r.line, "LogicalChannel " + std::to_string(logical) + " has conflicting destinations");
+            // The current UI, meters and test generator address one channel number. A remap needs a
+            // distinct logical/output representation throughout those paths before it can be used.
+            if (logical != output || speaker->second != output)
+                fail(r.line, "non-identity audio channel mapping is not supported by this app");
+        }
+        for (const Speaker &speaker : scene.speakers)
+            if (!mappedIds.count(speaker.id))
+                throw Error("[AUDIO_CHANNEL_MAP] is missing SPEAKER " + speaker.id);
+        if (provisional)
+            scene.warnings.push_back(std::to_string(provisional) + " provisional audio channel mappings");
     }
     return scene;
 }
